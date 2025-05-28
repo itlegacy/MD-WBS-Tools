@@ -1,0 +1,113 @@
+# MD-WBS Syntax Specification
+# Version: 6.3 (Aligned with MD-WBS-Tools Requirements Definition vX.X)
+# Date: 2025-05-07
+
+format_name: "Hierarchical ID-Prefixed Heading MD-WBS with Indented Listed Attributes"
+file_extension: ".md"
+recommended_encoding: "UTF-8"
+
+# 1. Overall File Structure
+# The MD-WBS file consists of two main parts, in order:
+#   1.1. YAML Front Matter (Optional but Recommended)
+#   1.2. Markdown Body (WBS content)
+
+# 2. YAML Front Matter
+yaml_front_matter:
+  delimiters: "Enclosed by triple hyphens (---) at the very beginning of the file."
+  format: "Standard YAML key-value pairs."
+  parser_dependency_note: |
+    PowerShellスクリプトは `ConvertFrom-Yaml` (PowerShell 7.3+でネイティブサポート) の使用を試みる。
+    利用できない場合は、基本的なキー・バリュー形式の簡易パーサーにフォールバックする。
+    このため、フロントマター内での複雑なYAML構造（ネストされたマッピングやシーケンスなど）は避けることを推奨。
+  supported_keys:
+    - key: "title"
+      type: "string"
+      required: false # Recommended
+      description: "プロジェクトの公式名称。"
+    - key: "description"
+      type: "string"
+      required: false
+      description: "プロジェクトの簡単な説明（任意）。"
+    - key: "date"
+      type: "date (YYYY-MM-DD)"
+      required: false
+      description: "ドキュメント作成日や任意の参照日。"
+    - key: "projectstartdate"
+      type: "date (YYYY-MM-DD)"
+      required: false
+      description: "プロジェクト全体の計画開始日（任意）。"
+    - key: "projectoveralldeadline"
+      type: "date (YYYY-MM-DD)"
+      required: false
+      description: "プロジェクト全体の最終締切日（任意）。"
+    - key: "view"
+      type: "string"
+      required: false
+      description: "Markwhenのデフォルト表示ビュー（例: month, week）（任意）。"
+    # ★ 01_requirements_definition.yaml で calculation_engine_default を採用する場合に追加 ★
+    # - key: "calculation_engine_default"
+    #   type: "string (backward | forward)"
+    #   required: false
+    #   description: |
+    #     プロジェクト全体のスケジュール計算方法のデフォルトを指定（任意）。
+    #     'backward': 逆線表（締切日から計算）をデフォルトとする。
+    #     'forward':  順線表（開始日から計算）をデフォルトとする。
+    #     個々のタスクの属性が優先される。未指定時は 'backward'。
+
+# 3. Markdown Body
+markdown_body:
+  general_rules:
+    - rule: "見出しブロック、属性リストブロックの前後には空行を推奨（可読性とパース安定性のため）。"
+  wbs_element_structure:
+    description: "WBS要素はMarkdown見出しで定義。構成: 見出し行 → (空行) → 属性リスト → (空行) → 説明文。"
+    heading_line:
+      syntax: "MarkdownHeadingMarker HierarchicalID. ElementName"
+      markdown_heading_marker: "## (Level 2), ### (Level 3), #### (Level 4), ##### (Level 5). Level 1は文書タイトル用。"
+      hierarchical_id:
+        format: "ドット区切り数字 (例: `1`, `1.1`, `1.1.1`)。末尾ドットはパーサーが除去。"
+        uniqueness: "ドキュメント内で一意であること。"
+      element_name: "IDとスペースに続く要素名。"
+    attribute_list:
+      placement: "対応する見出し行の直後（または空行を挟んで）。説明文よりも前。"
+      indentation: "親見出しより1レベルインデント（通常スペース4つ）。必須。"
+      format: "Markdownリスト (`- keyword: value`)。"
+      list_item_syntax: "- keyword: value"
+      keyword:
+        description: "定義済みキーワード (case-insensitive) + コロン + スペース。"
+        allowed_set:
+          - "deadline: YYYY-MM-DD形式の締切日。"
+          - "duration: Xd形式の所要実営業日数 (土日祝非稼働)。"
+          - "start_date_fixed: YYYY-MM-DD形式の固定開始日。順線表計算の起点として優先される。"
+          - "status: pending, inprogress, completed のいずれか。"
+          - "progress: 進捗率 (例: 50%, 75)。末尾の '%' は任意。"
+          - "assignee: 担当者名（文字列）。"
+          - "org: 担当組織名（文字列）。"
+          - "depends: 先行タスクの階層的ID (例: 1.1.1)。"
+          - "last_updated: YYYY-MM-DD形式の最終更新日（主にExcel Q列との連携用）。"
+          # ★ 01_requirements_definition.yaml で calculation_preference を採用する場合に追加 ★
+          # - "calculation_preference: 'forward' または 'backward'。タスク個別の計算方法を指定。"
+      value:
+        description: "キーワードに対応する値。行末の `#` 以降はコメントとして無視。"
+        trimming: "値の前後の空白はトリムされる。"
+    element_description_text:
+      description: "WBS要素の詳細説明。Markdownの標準的な段落として記述。"
+      placement: "見出し行および属性リスト（あれば）の後に、空行を挟んで記述。"
+
+script_processing_rules:
+  id_handling: "見出しの階層的IDがプライマリキー。属性リスト内の `id:` は無視。"
+  date_calculation_logic_for_output_generation: # 以前の date_calculation_priority_for_tasks を改名・明確化
+    description: "`ConvertTo-MdWbsToMarkwhen.ps1` および `ConvertTo-MdWbsToExcel.ps1` がMD-WBSからスケジュールを計算する際のロジック。"
+    priority:
+      - "1. **`start_date_fixed` と `duration` が存在する場合 (順線表)**: `start_date_fixed` をタスク開始日（祝日調整後）とし、`duration`（実営業日数）と祝日から終了日 (`CalculatedEndDate`) と `deadline` を計算する。"
+      - "2. **`start_date_fixed` がなく `deadline` と `duration` が存在する場合 (逆線表 - デフォルト)**: `deadline` をタスク終了日（祝日調整後）とし、`duration`（実営業日数）と祝日から開始日 (`CalculatedStartDate`) を計算する。"
+      - "3. **`deadline` のみ存在**: `duration` をデフォルト値 (例: `1d`) とし、上記2の逆線表計算を適用。"
+      - "4. **`start_date_fixed` のみ存在**: `duration` をデフォルト値 (例: `1d`) とし、上記1の順線表計算を適用。"
+      - "5. **`duration` のみ、または情報不足**: 警告を出し、日付関連は未設定または推定値とする。"
+  attribute_value_parsing:
+    comments: "属性値の行末 `#` 以降はコメントとして除去。"
+    depends_id_trimming: "`depends` 属性のID値の末尾ドットは除去。"
+  output_to_markwhen: # (01_requirements_definition.yaml と整合)
+    tasks: "タイムラインエントリは `YYYY-MM-DD/YYYY-MM-DD: タスク名 (状態アイコン 進捗%) #担当者(短縮) #組織(短縮) #IDタグ ...` の形式。"
+  output_to_excel: # (01_requirements_definition.yaml と整合)
+    column_mapping_reference: "`01_requirements_definition.yaml` の `excel_integration.md_wbs_to_excel.output_structure.wbs_data_sheet.columns` を参照。"
+    row_output_order: "Excelグループ化機能に合わせ、子要素が先、親要素（集計行）が後の順で出力。"
