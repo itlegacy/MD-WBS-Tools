@@ -223,7 +223,7 @@ constraints_and_assumptions:
   - id: "ASSUMP-LOCAL-FILESYSTEM-EXCEL"
     details: "Excel連携機能（COM経由）を安定して動作させるため、処理対象および出力先のExcelファイルはローカルの非同期フォルダ（例: C:\Temp）に配置することを推奨する。OneDrive同期フォルダなどでの動作は環境により不安定になる可能性がある。"
   - id: "ASSUMP-WBSTASKNOTATION-SYNTAX" # 新規追加
-    details: "WBSタスク記法は、Markdownリスト形式で各アイテムがカンマ区切りの定義済み順序の要素を持つことをパースの前提とする。"
+    details: "WBSタスク記法は、Markdownリスト形式で各アイテムがカンマ区切りの定義済み順序の要素を持ち、オプションで行末コメントを含むことをパースの前提とする。"
 
 deliverables_of_the_established_methodology:
   - "WBSタスク記法 (.md) のテンプレートファイルおよびフォーマット説明 (`docs/12_wbs_task_syntax_specification.md`)"
