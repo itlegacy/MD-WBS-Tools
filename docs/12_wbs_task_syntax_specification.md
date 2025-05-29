@@ -203,8 +203,6 @@ base_date: "2025-01-01"
 
 ## 6. AI生成用プロンプトテンプレート (低負荷版)
 
-以下は、与えられたタスクリストを上記の「WBSタスク記法」に変換させるよう、比較的低性能な生成AI（例: ChatGPT-3.5レベル）に指示する際のプロンプトテンプレートです。AIの能力に応じて調整してください。
-
 ---
 
 ### ENGLISH PROMPT TEMPLATE FOR AI（Low-resource models）
@@ -222,9 +220,9 @@ Convert the following task list into a specific Markdown WBS format. Follow thes
         1. `Name`（string, REQUIRED）
         2. `EndDate`（date YYYY-MM-DD, optional）
         3. `Duration`（string like `5d`, optional）
-        4. `DependencyType`（string `先行` for "predecessor" or `後続` for "successor", optional）
-        5. `RelatedTaskName`（string, name of the task it depends on, optional, use if DependencyType is present. Task ID can also be used.）
-        6. `Status`（string `未着手` for "pending", `進行中` for "in progress", `完了` for "completed", optional, defaults to `未着手`）
+        4. `DependencyType`（string `先行` for "predecessor" or `後続` for "successor", optional. **Note: These are Japanese keywords.**)
+        5. `PredecessorTaskIdentifier`（string, **Task ID (e.g., `T1.2`) or Name (e.g., `Initial Setup`) of the task it depends on**, optional, use if DependencyType is `先行`）
+        6. `Status`（string `未着手` for "pending", `進行中` for "in progress", `完了` for "completed", optional, defaults to `未着手`. **Note: These are Japanese keywords.**)
         7. `Progress`（string like `50%` or number `0.5`, optional, defaults to `0%`）
         8. `Assignee`（string, optional）
         9. `Organization`（string, optional）
@@ -232,14 +230,12 @@ Convert the following task list into a specific Markdown WBS format. Follow thes
         11. `LastUpdatedDate`（date YYYY-MM-DD, optional）
 
 3. **Omitting Optional Fields**:
-    * If an optional field in the middle is empty, keep its comma placeholder. Example: `Task Name,,,先行,DependencyName,,,,,,`
+    * If an optional field in the middle is empty, keep its comma placeholder. Example: `Task Name,,,先行,T1.2.1,,,,,,` (Dependency on Task ID T1.2.1)
     * If trailing optional fields are empty, you can omit the trailing commas. Example: `Task Name,2023-12-31,5d`
 
-4. **Task Line Examples**:
-    * Valid Task Line: `- Task A,2023-10-31,5d,先行,Task B,進行中,25%,John Doe,Dev Team,2023-10-01,2023-09-15`
-    * Task with only name: `- Task Name`
-    * Task omitting several fields: `- Task C,,,先行,TaskA`
-    * Task with dependency specified by Task ID: `- TaskE,,,先行,T101`
+4. **Example Task Lines**:
+    * Dependency by Name: `- Task A,2023-10-31,5d,先行,Task B,進行中,25%,John Doe,Dev Team,2023-10-01,2023-09-15 # Depends on 'Task B' by name`
+    * Dependency by ID:   `- Task C,2023-11-15,3d,先行,T1.2,未着手,0%,Jane Roe,QA Team,,,2023-10-20 # Depends on Task ID 'T1.2'`
 
 **Input Task List:**
 [Paste the task list you want to convert to the Markdown WBS format here. Plain text or other formats are acceptable.]
@@ -250,9 +246,10 @@ Convert the following task list into a specific Markdown WBS format. Follow thes
 ```markdown
 ## Task Information
 
-- Parent Task 1
-  - Child Task 1A,2025-01-15,5d,,,未着手,0%
-  - Child Task 1B,2025-01-20,3d,先行,Child Task 1A,進行中,50%
+- Parent Task 1 # Main category
+  - Child Task 1A,2025-01-15,5d,,,未着手,0% # Initial sub-task (ID might be T1.1 internally)
+  - Child Task 1B,2025-01-20,3d,先行,Child Task 1A,進行中,50% # Depends on 'Child Task 1A' by name
+  - Child Task 1C,2025-01-22,2d,先行,T1.1,完了,100% # Depends on Task ID 'T1.1' (assuming T1.1 is Child Task 1A)
 ```
 
 ---
@@ -273,7 +270,7 @@ Convert the following task list into a specific Markdown WBS format. Follow thes
         2. `終了入力`（日付 YYYY-MM-DD, 省略可）
         3. `日数入力`（文字列 例: `5d`, 省略可）
         4. `依存関係種別`（文字列 `先行` または `後続`, 省略可）
-        5. `関連タスク名称`（文字列, 依存タスク名, 省略可, 依存関係種別がある場合使用。タスクIDも使用可能）
+        5. **`依存先行タスク指定`**（文字列, **先行するタスクの「タスクID」または「名称」を指定**, 省略可, `依存関係種別`が`先行`の場合使用）
         6. `状態`（文字列 `未着手`, `進行中`, `完了`, 省略可, デフォルト: `未着手`）
         7. `進捗率`（文字列 例: `50%` または数値 `0.5`, 省略可, デフォルト: `0%`）
         8. `担当者`（文字列, 省略可）
@@ -311,5 +308,6 @@ Convert the following task list into a specific Markdown WBS format. Follow thes
 
 | 日付       | バージョン | 担当者      | 変更内容                                     |
 |------------|------------|-------------|----------------------------------------------|
+| 2025-05-29 | 1.4        | AI/ユーザー | AIプロンプトの依存関係指定をID/名称に対応. |
 | 2025-05-29 | 1.3        | AI/ユーザー | 上位カテゴリへの属性付与の明確化、トップダウン/ボトムアップ両アプローチへの対応を仕様に明記。 |
 | 2025-05-29 | 1.2        | AI/ユーザー | 行末コメント機能の追加、依存関係指定の柔軟化 |
