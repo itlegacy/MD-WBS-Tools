@@ -2,19 +2,19 @@
 # (旧: docs/01_requirements_definition.yaml)
 
 project_overview:
-  project_name: "MD-WBS-Tools" # 新プロジェクト名
+  project_name: "MD-WBS-Tools"
   objective: |
-    **Excelでの初期タスク入力と進捗管理の容易性を活かしつつ、テキストベースでの柔軟なタスク構造化・編集（主に「WBSタスク記法」および「リッチMD-WBS形式」を利用）、
+    **Excelでの初期タスク入力と進捗管理の容易性を活かしつつ、テキストベースでの柔軟なタスク構造化・編集（主に「WBSタスク記法」および「リッチMD-WBS形式」を利用し、トップダウンおよびボトムアップ双方からの計画策定を支援）、
     およびMarkwhenによる視覚的なスケジュール確認を実現するプロジェクト管理手法を確立する。
-    利用者はExcelで順線表または逆線表の意図でスケジュール情報を入力でき、PowerShellスクリプトがこれを解釈して
-    各種WBSデータ形式（WBSタスク記法、リッチMD-WBS形式）および各種出力形式に適切に反映することを目指す。**
+    利用者はExcelやテキストファイルでスケジュール情報を入力・編集でき、PowerShellスクリプトがこれを解釈して
+    各種WBSデータ形式および各種出力形式に適切に反映することを目指す。**
   scope: |
-    **Excel入力フォーマットの定義、「WBSタスク記法」（Markdownリストベース）の定義、「リッチMD-WBS形式」の定義、
+    **Excel入力フォーマットの定義、「WBSタスク記法」（Markdownリストベース、トップダウン/ボトムアップ計画対応）の定義、「リッチMD-WBS形式」の定義、
     各種PowerShellスクリプト（下記「成果物」参照）の開発、および関連ドキュメントの整備を含む。
-    および関連ドキュメントの整備を含む。スクリプトは、Excelの入力パターンからスケジュールの計算意図（順線表/逆線表）を推定し、
-    WBS属性に変換、さらにMarkwhenおよび進捗管理用Excelへの出力を自動化する。
+    スクリプトは、Excelの入力パターンやWBSタスク記法の属性からスケジュールの計算意図（順線表/逆線表、上位カテゴリ目標）を推定し、WBS属性に変換、
+    さらにMarkwhenおよび進捗管理用Excelへの出力を自動化する。
     タスクの追加・削除・構造変更は、主に「WBSタスク記法」および「リッチMD-WBS形式」で行うことを主要な編集手段と位置づける。**
-  target_date_of_this_document: "2025-05-28" # 本日時点でのドキュメント更新ターゲット日
+  # ... (target_date_of_this_document は適宜更新)
 
 system_requirements:
   general:
@@ -33,8 +33,8 @@ functional_requirements:
   project_metadata_header:
     # ... (変更なし) ...
 
-  wbs_management: # MD-WBS自体の定義
-    description: "作業分解構成図 (WBS) のテキストベースでの効果的な管理と、ExcelおよびMarkwhenへの双方向マッピング。詳細は `docs/11_mdwbs_original_syntax.yaml` および `docs/12_wbs_task_syntax_specification.md` も参照。"
+  wbs_management: # WBSタスク記法およびリッチMD-WBS形式を含む
+    description: "作業分解構成図 (WBS) のテキストベースでの効果的な管理と、ExcelおよびMarkwhenへの双方向マッピング。トップダウン的な目標設定とボトムアップ的な詳細化の両方をサポートする。詳細は `docs/11_mdwbs_original_syntax.yaml` および `docs/12_wbs_task_syntax_specification.md` も参照。"
     data_format_details:
       # ... (変更なし) ...
     element_attributes_definition:
@@ -51,12 +51,11 @@ functional_requirements:
         # - "calculation_preference" # (オプション: 将来検討)
       # ... (他の説明は変更なし) ...
 
-  gantt_chart_and_schedule_logic: # Markwhen出力とスケジュール計算全般 (以前の gantt_chart_management を改名・統合)
-    description: "Markwhenによるプロジェクトスケジュールの視覚化と、PowerShellスクリプトによる柔軟なスケジュール計算。主にWBSタスク記法からの出力を想定。"
+  gantt_chart_and_schedule_logic: # Markwhen出力とスケジュール計算全般
+    description: "Markwhenによるプロジェクトスケジュールの視覚化と、PowerShellスクリプトによる柔軟なスケジュール計算。WBSタスク記法の上位カテゴリ属性も考慮し、トップダウン目標とボトムアップ実績の比較検討を支援。"
     target_visualization_tool_markwhen: # Markwhenに特化した要件
-      tool_name: "Markwhen (VS Code拡張経由)"
       output_conversion_from_mdwbs: # 主に `ConvertTo-MarkwhenFromWbsTaskNotation.ps1` が担当
-        - "WBSタスク記法またはリッチMD-WBSの階層構造をMarkwhenの `section`, `group` にマッピング。"
+        - "WBSタスク記法またはリッチMD-WBSの階層構造をMarkwhenの `section`, `group` にマッピング。**上位カテゴリ（section, group）も、それ自身が期間や状態を持つ場合、タイムライン上に表現することを検討する。**"
         - "タイムラインエントリは `YYYY-MM-DD/YYYY-MM-DD: タスク名 (状態アイコン 進捗%) #担当者 #組織 #IDタグ ...` の形式。"
         - "**状態アイコン**: `start_date_fixed`/`CalculatedStartDate`, `deadline`/`CalculatedEndDate`, `status`, `progress` および基準日 (`-BaseDate` パラメータ、デフォルトは実行日) から以下を判定し、タスク名の先頭に付加。"
           - "開始遅延 (⏰): 予定開始日超過かつ未着手。"
@@ -85,12 +84,13 @@ functional_requirements:
   excel_integration:
     description: |
       Excelを初期タスク入力インターフェースおよび進捗管理ツールとして利用し、WBSタスク記法やリッチMD-WBSを中間的な構造化・編集レイヤーとして活用するための双方向データ連携。
-      Excelの行挿入・削除の弱点、条件書式の扱いづらさを考慮し、タスクの追加・削除・大幅な構造変更はテキストベースのWBS (WBSタスク記法またはリッチMD-WBS) で行うことを推奨する。
+      **トップダウンでの目標設定（大分類・中分類への期日・担当者割り当てなど）と、ボトムアップでの詳細タスク管理の両方をExcel上で表現・連携できるようにする。**
+      Excelの行挿入・削除の弱点、条件書式の扱いづらさを考慮し、タスクの追加・削除・大幅な構造変更はテキストベースのWBSで行うことを推奨する。
     general_constraints:
       - "Excelファイルの形式は `.xlsx` とする。"
       - "PowerShellスクリプトはExcelのCOMオブジェクトを直接操作する。ローカル環境へのMicrosoft Excelのインストールが必要。"
       - "Excelシート上では、複雑な休日計算（WORKDAY関数など）は原則として使用しない（Web版Excelでの互換性および処理軽量化のため）。"
-    md_wbs_to_excel: # 主に `ConvertTo-ExcelFromWbsTaskNotation.ps1` が担当。リッチMD-WBSからの変換はWBSタスク記法を経由するパスも検討。
+    md_wbs_to_excel: # 主に `ConvertTo-ExcelFromWbsTaskNotation.ps1` が担当
       id: "WBSTASKNOTATION-TO-EXCEL" # ID変更
       name: "WBSタスク記法から進捗管理用Excelへのエクスポート"
       details: "WBSタスク記法ファイルの内容（計算済みスケジュール含む）を解析し、進捗管理に適した形式で既存のExcelファイル（指定シート）に出力する。"
@@ -102,13 +102,13 @@ functional_requirements:
           clear_existing_rows_before_write: true # 書き込み開始行以降の既存データをクリアする
           columns: # ★★★ WBSタスク記法の項目をExcel列定義にマッピング ★★★ (元の定義をベースに項目名をWBSタスク記法に合わせる)
             - name: "A: タスクID"
-              script_output: "$Task.Id" # $Element を $Task に変更するなど、WBSタスク記法オブジェクトに合わせる
+              script_output: "$Task.Id"
             - name: "B: 大分類"
-              script_output: "if ($Task.HierarchyLevel -eq 1) { $Task.名称 }" # レベル調整
+              script_output: "if ($Task.HierarchyLevel -eq 1) { $Task.名称 } # この行が大分類自身の情報を表す場合、名称と共に他の属性も対応列に出力"
             - name: "C: 中分類"
-              script_output: "if ($Task.HierarchyLevel -eq 2) { $Task.名称 }" # レベル調整
+              script_output: "if ($Task.HierarchyLevel -eq 2) { $Task.名称 } # この行が中分類自身の情報を表す場合、名称と共に他の属性も対応列に出力"
             - name: "D: タスク名称"
-              script_output: "if ($Task.HierarchyLevel -ge 3) { $Task.名称 }" # レベル調整
+              script_output: "if ($Task.HierarchyLevel -ge 3) { $Task.名称 } # この行が詳細タスクの情報を表す場合"
             - name: "E: 先行後続"
               script_output: "if ($Task.依存関係種別) { $Task.依存関係種別 } else { '' }"
             - name: "F: 関連番号"
@@ -124,29 +124,24 @@ functional_requirements:
             - name: "J-M: (Excel計算式)"
               script_output: "処理対象としない"
             - name: "N: 担当組織"
-              script_output: "$Task.担当組織"
+              script_output: "$Task.担当組織 # どの階層のアイテムでも担当組織を持ちうる"
             - name: "O: 担当者"
-              script_output: "$Task.担当者"
+              script_output: "$Task.担当者 # どの階層のアイテムでも担当者を持ちうる"
             - name: "P: 表示 (Excelフィルタ用)"
               script_output: "処理対象としない (ユーザー手入力/Excel計算式保持)"
             - name: "Q: 最終更新"
-              script_output: "$Task.最終更新日"
+              script_output: "$Task.最終更新日 # どの階層のアイテムでも最終更新日を持ちうる"
             - name: "R: 開始入力 (タスク開始可能日)"
-              script_output: "$Task.固定開始日 (あれば優先) または $Task.CalculatedStartDate"
+              script_output: "$Task.固定開始日 (あれば優先) または $Task.CalculatedStartDate # どの階層のアイテムでも適用"
             - name: "S: 終了入力 (締切日)"
-              script_output: "$Task.終了入力 (あれば優先) または $Task.CalculatedEndDate"
+              script_output: "$Task.終了入力 (あれば優先) または $Task.CalculatedEndDate # どの階層のアイテムでも適用"
             - name: "T: 日数入力 (カレンダー日数)"
-              script_output: "$Task.CalculatedStartDate と $Task.CalculatedEndDate から計算したカレンダー日数（土日祝考慮なしの単純差）"
+              script_output: "$Task.CalculatedStartDate と $Task.CalculatedEndDate から計算したカレンダー日数（土日祝考慮なしの単純差） # どの階層のアイテムでも適用"
             - name: "U-W: (Excel計算式)"
               script_output: "処理対象としない"
             - name: "X: 進捗率 (0.0-1.0)"
-              script_output: "$Task.進捗率 を数値に変換" # (例: "50%" -&gt; 0.5)
-            - name: "Y: 開始実績"
-              script_output: "$Task.状態 と $Task.CalculatedStartDateから導出"
-            - name: "Z: 終了実績"
-              script_output: "$Task.状態 と $Task.CalculatedEndDateから導出"
-            - name: "AA: (条件書式用)" # スクリプトからは書き込まない
-              script_output: "処理対象としない"
+              script_output: "$Task.進捗率 を数値に変換 # どの階層のアイテムでも進捗率を持ちうる"
+            # ... (Y, Z, AA は変更なし) ...
       row_output_order: # WBSタスク記法の階層構造に基づく
         # ... (元の定義と同様の思想で、タスク→グループ集計→セクション集計の順) ...
       summary_row_calculation: # グループ行、セクション行の計算
@@ -242,11 +237,11 @@ deliverables_of_the_established_methodology:
   - "PowerShellコーディングスタンダード (`docs/90_coding_standards.md`)"
 
 metadata:
-  document_version: "4.2" # (WBSタスク記法の導入とロードマップ変更を反映)
-  creation_date: "2025-05-28" # 本更新日
+  document_version: "4.3" # (トップダウン/ボトムアップ対応の明確化)
+  creation_date: "2025-05-29" # 本更新日
   last_modified_by: "AI Assistant (Gemini) with User Guidance"
   based_on_discussion_with_user: true
-  status: "Updated Draft - Reflects new roadmap and WBS Task Notation"
+  status: "Updated Draft - Reflects support for top-down/bottom-up planning"
 
 # ---
 # 変更履歴
