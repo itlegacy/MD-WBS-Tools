@@ -247,3 +247,10 @@ metadata:
   last_modified_by: "AI Assistant (Gemini) with User Guidance"
   based_on_discussion_with_user: true
   status: "Updated Draft - Reflects new roadmap and WBS Task Notation"
+
+# ---
+# 変更履歴
+#
+# | 日付       | バージョン | 担当者      | 変更内容                                     |
+# |------------|------------|-------------|----------------------------------------------|
+# | 2025-05-29 | 1.2        | AI/ユーザー | 行末コメント機能の追加、依存関係指定の柔軟化 |
