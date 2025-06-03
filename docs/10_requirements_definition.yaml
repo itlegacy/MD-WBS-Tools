@@ -1,68 +1,57 @@
 # docs/10_requirements_definition.yaml
-# (simple-md-wbs + VBAマクロ連携を考慮した更新ドラフト)
+#（simple-md-wbs + VBAマクロ連携を考慮した更新ドラフト）
 
 project_overview:
   project_name: "MD-WBS-Tools"
   objective: |
-    simple-md-wbs 記法 (Markdownベース) を用いたWBSの直感的作成・編集と、Markmapによる視覚化を支援する。
-    **Excel (CSV経由) との連携を主とし、PowerShellスクリプトは標準的な階層順序のCSVを入出力する。
+    simple-md-wbs 記法（Markdownベース）を用いたWBSの直感的作成・編集と、Markmapによる視覚化を支援する。
+    **Excel（CSV経由）との連携を主とし、PowerShellスクリプトは標準的な階層順序のCSVを入出力する。
     Excelでの特殊な表示順序への対応は、オプションとして提供するVBAマクロで行うことを想定する。**
     PowerShellスクリプトを核とし、ローカル環境で完結するツールセットを提供する。
   scope: |
-    simple-md-wbs 記法の定義、および当該記法で記述されたファイルと**標準順序のCSVファイル間**の双方向変換を行うPowerShellスクリプトの開発。
-    関連ドキュメント (仕様書、マニュアル等) の整備を含む。
-    **（オプション機能として）標準順序CSVをExcelのグループ化表示に適した順序に変換するVBAマクロ、およびその逆変換を行うVBAマクロの開発検討。**
-  target_date_of_this_document: "YYYY-MM-DD" # 適宜更新
-  # ... (その他、既存の関連情報があれば維持)
+    simple-md-wbs 記法の定義（詳細は docs/12_wbs_task_syntax_specification.md を参照）、
+    および当該記法で記述されたファイルと標準順序のCSVファイル間の双方向変換を行うPowerShellスクリプトの開発。
+    関連ドキュメント（仕様書、マニュアル等）の整備を含む。
+    （オプション機能として）標準順序CSVをExcelのグループ化表示に適した順序に変換するVBAマクロ、およびその逆変換を行うVBAマクロの開発検討。
+  target_date_of_this_document: "2025-06-03" # 本日の日付またはFIX日付に更新
+  # ...（その他、既存の関連情報があれば維持）
 
 system_requirements:
   general:
-    - "SaaS (Software as a Service) は選択肢から除外する。"
+    - "SaaS（Software as a Service）は選択肢から除外する。"
     - "Microsoft Project を含む、ライセンス購入が必要な市販パッケージ製品は選択肢から除外する。"
     - "全てのデータ処理と保存はローカル環境で完結すること（社外秘情報取扱いのため）。"
   preferred_environment:
-    - "Microsoft Visual Studio Code (VS Code) の利用を強く推奨する (Markdown編集、Markmap拡張機能連携のため)。"
-    - "VS Code の機能拡張を積極的に活用する (例: Markmap用、Markdown編集支援)。"
+    - "Microsoft Visual Studio Code（VS Code）の利用を強く推奨する（Markdown編集、Markmap拡張機能連携のため）。"
+    - "VS Code の機能拡張を積極的に活用する（例: Markmap用、Markdown編集支援）。"
   scripting_language:
-    - "PowerShell (バージョン 7.3 以上を推奨) をデータ連携および主要な自動処理に用いる。共通処理は `MyCommonFunctions` モジュールに分離。"
-  # ... (他のシステム要件は必要に応じて維持・更新)
+    - "PowerShell（バージョン 7.3 以上を推奨）をデータ連携および主要な自動処理に用いる。共通処理は `MyCommonFunctions` モジュールに分離。"
+  # ...（他のシステム要件は必要に応じて維持・更新）
 
 functional_requirements:
-  simple_md_wbs_management: # ★ セクション名変更、WBS管理の中核
+  simple_md_wbs_management:
     description: |
-      **simple-md-wbs 記法を用いたWBSの作成、編集、および構造管理。
-      Markdownの見出し (H1-H4) とリストアイテムで階層を表現し、各アイテムの属性は専用の属性行 (%%) またはHTMLコメント内に記述する。
-      詳細は `docs/12_wbs_task_syntax_specification.md` (simple-md-wbs 仕様書) を参照。**
-    element_attributes_definition: # ★ simple-md-wbs 仕様書と同期
-      # (属性の定義は docs/12_wbs_task_syntax_specification.md に集約し、ここでは主要なものや特記事項を記述するか、仕様書への参照を促す)
-      fields:
-        - name: "ユーザー記述ID"
-          type: "String"
-          description: "アイテムの一意な識別子。依存関係指定に使用。"
-        - name: "終了日"
-          type: "Date (YYYY-MM-DD)"
-        - name: "日数"
-          type: "Integer"
-          description: "作業日数。ExcelのU列(日数入力)に相当。"
-        - name: "依存関係種別"
-          type: "String ('先行' or '後続')"
-        - name: "先行タスクID"
-          type: "String"
-          description: "依存する先行タスクのユーザー記述ID。"
-        - name: "状態"
-          type: "String"
-        - name: "進捗率"
-          type: "String (e.g., '50%', '0.5')"
-        - name: "担当者"
-          type: "String"
-        - name: "担当組織"
-          type: "String"
-        - name: "開始日実績"
-          type: "Date (YYYY-MM-DD)"
-        - name: "コメント"
-          type: "String"
-          description: "アイテムに関する注釈。"
-    # ... (旧 wbs_management の下にあった data_format_details などは、simple-md-wbs の特徴に合わせて整理・統合)
+      simple-md-wbs 記法を用いたWBSの作成、編集、および構造管理。
+      Markdownの見出し（H1-H4）とリストアイテムで階層を表現し、各アイテムの属性は専用の属性行（%%）またはHTMLコメント内に記述する。
+      本記法の詳細な構文とルールは `docs/12_wbs_task_syntax_specification.md`（simple-md-wbs 仕様書）で定義される。
+    element_attributes_definition:
+      description: |
+        simple-md-wbs の各アイテム（カテゴリおよびタスク）が保持できる属性。
+        **カテゴリ (`%%`行) とタスク (`<!-- -->`内) は同じ属性セットと順序を持つ。**
+        詳細は `docs/12_wbs_task_syntax_specification.md` の「3.3. 属性フィールド一覧と詳細」を参照のこと。
+      fields_summary: # simple-md-wbs 仕様書で定義される主要な属性名
+        - "ユーザー記述ID"
+        - "開始日（入力）"
+        - "終了日（入力）"
+        - "日数（入力）"
+        - "関連タスク種別"
+        - "関連タスクID"
+        - "開始日（実績）"
+        - "進捗率"
+        - "担当者"
+        - "担当組織"
+        - "最終更新日"
+        - "コメント"
 
   csv_integration: # ★ Excel連携からCSV連携に主眼を置く
     description: |
@@ -70,72 +59,86 @@ functional_requirements:
       **PowerShellスクリプトは、常に simple-md-wbs の自然な階層順序（カテゴリが先、タスクが後）を反映した「標準順序CSV」を扱う。**
       CSVファイルはExcelでの閲覧・編集や他ツールとの連携を目的とする。
     general_constraints:
-      - "CSVファイルのエンコーディングはUTF-8 (BOMなしを推奨) とする。"
-      - "CSVファイルの区切り文字はカンマ (,) とする。"
+      - "CSVファイルのエンコーディングはUTF-8（BOMなしを推奨）とする。"
+      - "CSVファイルの区切り文字はカンマ（,）とする。"
     simplemdwbs_to_csv: # ★ 旧 md_wbs_to_excel から変更
       id: "SIMPLEMDWBS-TO-CSV"
       name: "simple-md-wbs からCSVへのエクスポート"
       details: "simple-md-wbs ファイルを解析し、定義された列構成で**標準順序のCSVファイル**に出力する。"
-      output_csv_columns: # ★ プロトタイプで成功したCSV列構成
-        - name: "A: タスクID"
-          source_script_output: "表示用ソートキー (ツール自動生成、例: 01.01.00.00)"
+      output_csv_columns: # プロトタイプとExcelテンプレートを考慮したCSV列構成
+        - name: "A: タスクID" # CSVの列レターと列名を併記
+          description: "ツールが自動生成する階層的なソート用ID（例: 01.01.00.00）。Excelでの並べ替えに使用。"
+          source_simplemdwbs: "ツール自動生成（Get-DisplaySortKey）"
         - name: "B: 大分類"
-          source_script_output: "H2見出しの名称 (該当アイテムのみ)"
+          description: "H2見出しの名称（該当アイテムのみ）。"
+          source_simplemdwbs: "H2見出しテキスト"
         - name: "C: 中分類"
-          source_script_output: "H3見出しの名称 (該当アイテムのみ)"
+          description: "H3見出しの名称（該当アイテムのみ）。"
+          source_simplemdwbs: "H3見出しテキスト"
         - name: "D: 小分類"
-          source_script_output: "H4見出しの名称 (該当アイテムのみ)"
+          description: "H4見出しの名称（該当アイテムのみ）。"
+          source_simplemdwbs: "H4見出しテキスト"
         - name: "E: タスク名称"
-          source_script_output: "H1見出しの名称、またはリストアイテムのタスク名 (該当アイテムのみ)"
-        - name: "F: 先行有無" # (この列は今回のプロトタイプでは直接扱っていない。Excel側の計算用か？ 残すか検討)
-          source_script_output: "ツールでは直接出力しない想定 (Excel側で依存タスクIDから計算か)"
-        - name: "G: 関連番号 (先行タスクID)" # ★列名と内容を明確化
-          source_script_output: "解決済みの先行タスクの「表示用ソートキー」 (依存関係解決後)"
-        - name: "H: 先行後続タスク名" # ★列名と内容を明確化
-          source_script_output: "解決済みの先行タスクの名称 (依存関係解決後)"
-        # --- ここから simple-md-wbs の属性と対応するCSV列 ---
-        # (Excelテンプレートの列構成 (I列以降) と simple-md-wbs の属性をマッピング)
-        # (例: N:担当組織, O:担当者, S:終了入力(T列), T:日数入力(U列), X:進捗率, Y:開始日実績)
-        # プロトタイプの出力列をベースに、Excelテンプレートの列名と突き合わせる
-        - name: "担当組織" # 例: ExcelのN列
-          source_script_output: "simple-md-wbs の「担当組織」属性"
-        - name: "担当者"   # 例: ExcelのO列
-          source_script_output: "simple-md-wbs の「担当者」属性"
-        - name: "終了入力" # 例: ExcelのT列 (元の日数入力S列と混同しないよう注意) -> simple-md-wbsの「終了日」
-          source_script_output: "simple-md-wbs の「終了日」属性"
-        - name: "日数入力" # 例: ExcelのU列 -> simple-md-wbsの「日数」
-          source_script_output: "simple-md-wbs の「日数」属性"
-        - name: "進捗率"   # 例: ExcelのX列
-          source_script_output: "simple-md-wbs の「進捗率」属性 (文字列のまま)"
-        - name: "開始日実績" # 例: ExcelのY列
-          source_script_output: "simple-md-wbs の「開始日実績」属性"
-        # --- 追加でCSVに出力しておくと便利な情報 ---
-        - name: "ユーザー記述ID (デバッグ・連携用)"
-          source_script_output: "simple-md-wbs の「ユーザー記述ID」属性"
-        - name: "依存関係種別"
-          source_script_output: "simple-md-wbs の「依存関係種別」属性"
-        - name: "先行タスクユーザー記述ID (元)"
-          source_script_output: "simple-md-wbs の「先行タスクID」属性 (未解決状態のもの)"
-        - name: "コメント"
-          source_script_output: "simple-md-wbs の「コメント」属性"
-        - name: "アイテム種別(デバッグ用)" # プロトタイプで有用だったもの
-          source_script_output: "Project, Category1, Category2, Category3, Task"
+          description: "プロジェクト名（H1）またはタスク（リストアイテム）の名称（該当アイテムのみ）。"
+          source_simplemdwbs: "H1見出しテキスト / リストアイテムテキスト"
+        - name: "F: 先行有無"
+          description: "関連タスクIDが指定されていれば '有'、なければ '無'（またはブランク）。"
+          source_simplemdwbs: "「関連タスクID」属性の有無からツールが判定"
+        - name: "G: 関連番号（先行タスクID）"
+          description: "解決済みの先行タスクの「タスクID」（A列の形式）。依存関係解決ロジックにより設定。"
+          source_simplemdwbs: "依存関係解決ロジック（「先行タスクID」属性から検索）"
+        - name: "H: 先行後続タスク名"
+          description: "解決済みの先行タスクの名称（カテゴリ名またはタスク名）。依存関係解決ロジックにより設定。"
+          source_simplemdwbs: "依存関係解決ロジック"
+        # --- Excelテンプレートの主要列と simple-md-wbs 属性のマッピング ---
+        - name: "N: 担当組織" # ExcelテンプレートのN列想定
+          description: "担当組織名。"
+          source_simplemdwbs: "「担当組織」属性"
+        - name: "O: 担当者"   # ExcelテンプレートのO列想定
+          description: "担当者名。"
+          source_simplemdwbs: "「担当者」属性"
+        - name: "Q: 最終更新日" # ExcelテンプレートのQ列
+          description: "simple-md-wbs の「最終更新日」属性。YYYY-MM-DD形式。"
+          source_simplemdwbs: "「最終更新日」属性"
+        - name: "S: 開始入力"
+          description: "simple-md-wbs の「開始日（入力）」属性。YYYY-MM-DD形式。"
+          source_simplemdwbs: "「開始日（入力）」属性"
+        - name: "T: 終了入力"
+          description: "simple-md-wbs の「終了日（入力）」属性。YYYY-MM-DD形式。"
+          source_simplemdwbs: "「終了日（入力）」属性"
+        - name: "U: 日数入力"
+          description: "simple-md-wbs の「日数（入力）」属性。数値。"
+          source_simplemdwbs: "「日数（入力）」属性"
+        - name: "Y: 進捗率" # ExcelテンプレートのY列
+          description: "simple-md-wbs の「進捗率」属性（パーセント表記の文字列）。"
+          source_simplemdwbs: "「進捗率」属性"
+        - name: "Z: 開始日実績" # ExcelテンプレートのZ列
+          description: "simple-md-wbs の「開始日（実績）」属性。YYYY-MM-DD形式。"
+          source_simplemdwbs: "「開始日（実績）」属性"
+        # --- デバッグ・連携用の追加列 (順序は任意だが、source_simplemdwbsを最新に) ---
+        - name: "ユーザー記述ID（元ID）"
+          source_simplemdwbs: "「ユーザー記述ID」属性"
+        - name: "関連タスク種別（元）" # 列名変更
+          source_simplemdwbs: "「関連タスク種別」属性"
+        - name: "関連タスクID（元）" # 列名変更
+          source_simplemdwbs: "「先行タスクID」属性"
     csv_to_simplemdwbs: # ★ 新規セクション
       id: "CSV-TO-SIMPLEMDWBS"
-      name: "CSVからsimple-md-wbs形式への変換"
+      name: "標準順序CSVからsimple-md-wbs形式への変換"
+      status: "計画中 / 将来実装"
       details: "定義された列構成の**標準順序のCSVファイル**を読み込み、simple-md-wbs 形式のMarkdownテキストを生成する。"
       input_csv_columns_reference: "上記 `simplemdwbs_to_csv.output_csv_columns` の列定義を参照。"
       hierarchy_reconstruction_logic: |
-        **CSVのA列「タスクID」(表示用ソートキー) をパースし、ドット区切りの各部分から階層レベルを判断する。
-        同じ親IDを持つ連続した行を同じカテゴリ配下としてグループ化し、適切なMarkdown見出しレベル (H1-H4) またはリストアイテムとして出力する。**
+        **CSVのA列「タスクID」（表示用ソートキー）をパースし、ドット区切りの各部分から階層レベルを判断する。
+        同じ親IDを持つ連続した行を同じカテゴリ配下としてグループ化し、適切なMarkdown見出しレベル（H1-H4）またはリストアイテムとして出力する。**
       attribute_mapping_logic: |
-        **CSVの各列の値を、対応する simple-md-wbs の属性フィールド (%%行またはHTMLコメント内) に正しい順序でマッピングする。
+        **CSVの各列の値を、対応する simple-md-wbs の属性フィールド（%%行またはHTMLコメント内）に正しい順序でマッピングする。
         空のセルは空の属性フィールドとして扱う。**
 
-  excel_display_optimization_via_vba: # ★ 新規セクション (オプション機能として)
+  excel_display_optimization_via_vba: # ★ 新規セクション（オプション機能として）
     id: "EXCEL-VBA-ORDERING"
-    name: "Excel表示最適化VBAマクロ (オプション)"
-    status: "検討中 / 将来実装"
+    name: "Excel表示最適化VBAマクロ（オプション）"
+    status: "検討中 / 将来実装" # ステータスを明記
     description: |
       **PowerShellスクリプトが出力した「標準順序CSV」をExcelで開いた後、ユーザーが実行することで、
       Excelのグループ化機能に適した表示順序（例: タスクが先、そのタスクを内包するカテゴリが後）に並べ替えるVBAマクロ。
@@ -152,14 +155,14 @@ functional_requirements:
     target_visualization_tool_markwhen:
       output_conversion_from_simplemdwbs: # ★ 対象をsimple-md-wbsに
         - "simple-md-wbs の階層構造と属性（日付、状態など）をMarkwhenの形式にマッピング。"
-        # (状態アイコンなどのロジックは維持・調整)
+        #（状態アイコンなどのロジックは維持・調整）
     schedule_calculation_logic: # PowerShell側での日付計算は将来検討
       description: "将来的に、PowerShellスクリプト側で依存関係と日数に基づく計画日付の自動計算を実装することを検討する。初期は simple-md-wbs に記述された日付・日数を主に利用する。"
-      # (旧 holiday_consideration などは、実装時に再検討)
+      #（旧 holiday_consideration などは、実装時に再検討）
 
   dependency_management:
     description: "simple-md-wbs 内で、ユーザー記述IDを用いたタスク間・カテゴリ間の依存関係（先行・後続）を定義可能とする。ツールはこれを解釈し、CSV出力等に反映する。"
-    # (旧 specific_dependency_types などは維持・調整)
+    #（旧 specific_dependency_types などは維持・調整）
 
 non_functional_requirements:
   usability:
@@ -170,47 +173,49 @@ non_functional_requirements:
       name: "直感的なsimple-md-wbs編集"
       details: "simple-md-wbs のデータ修正は、Markdown編集の知識があれば平易に行えること。"
     - id: "USE-CSV-EDIT" # ★ CSV編集も考慮
-      name: "CSVでのデータ編集 (オプション)"
-      details: "ユーザーはエクスポートされたCSVファイルでWBSデータを編集し、再度simple-md-wbs形式にインポートできる (構造的制約の理解が必要)。"
+      name: "CSVでのデータ編集（オプション）"
+      details: "ユーザーはエクスポートされたCSVファイルでWBSデータを編集し、再度simple-md-wbs形式にインポートできる（構造的制約の理解が必要）。"
   maintainability:
     - id: "MAINT-SCRIPT-READABLE"
       name: "スクリプトの保守性・可読性"
-      details: "PowerShellスクリプトは、コメント、適切な命名規則、関数分割 (MyCommonFunctionsモジュール活用) により可読性が高く、修正・拡張が比較的容易であること。"
-  # ... (他の非機能要件は必要に応じて維持・更新)
+      details: "PowerShellスクリプトは、コメント、適切な命名規則、関数分割（MyCommonFunctionsモジュール活用）により可読性が高く、修正・拡張が比較的容易であること。"
+  # ...（他の非機能要件は必要に応じて維持・更新）
 
 constraints_and_assumptions:
-  # ... (既存のCONST-NO-SAAS, CONST-NO-PAID-PKG, CONST-LOCAL-ONLY, CONST-VSCODE-MAIN などは維持)
+  # ...（既存のCONST-NO-SAAS, CONST-NO-PAID-PKG, CONST-LOCAL-ONLY, CONST-VSCODE-MAIN などは維持）
   - id: "ASSUMP-SIMPLEMDWBS-SYNTAX" # ★ 更新
     details: "入力ファイルが `docs/12_wbs_task_syntax_specification.md` で定義された simple-md-wbs 記法に従っていることを前提とする。"
   - id: "ASSUMP-CSV-STRUCTURE-FOR-IMPORT" # ★ 新規
     details: "CSVからsimple-md-wbsへの変換時、CSVファイルが指定された列構造とデータ形式を持つことを前提とする。"
-  # ... (Excel COMオブジェクトに関する制約は、CSV連携が主であれば優先度を下げたり、将来検討事項とする)
+  # ...（Excel COMオブジェクトに関する制約は、CSV連携が主であれば優先度を下げたり、将来検討事項とする）
 
 deliverables_of_the_established_methodology: # ★ simple-md-wbs 中心に更新
-  - "`simple-md-wbs` 記法 仕様書 (`docs/12_wbs_task_syntax_specification.md`)"
-  - "`simple-md-wbs` サンプルファイル (`samples/simple-md-wbs_examples/`)"
-  - "祝日リスト用CSVファイルのサンプルおよびフォーマット説明 (もし日付計算をPowerShell側で行う場合)"
+  - "`simple-md-wbs` 記法 仕様書（`docs/12_wbs_task_syntax_specification.md`）"
+  - "`simple-md-wbs` サンプルファイル（`samples/simple-md-wbs_examples/`）"
+  - "祝日リスト用CSVファイルのサンプルおよびフォーマット説明（もし日付計算をPowerShell側で行う場合）"
   - "PowerShellスクリプト群:"
-    - "`Convert-SimpleMdWbsToCsv.ps1` (simple-md-wbs からCSV形式への変換)"
-    - "`Convert-CsvToSimpleMdWbs.ps1` (CSVからsimple-md-wbs形式への変換 - 将来)"
-    - "`ConvertTo-MarkwhenFromSimpleMdWbs.ps1` (simple-md-wbs からMarkwhen形式への変換 - もし維持する場合)"
-  - "PowerShellモジュール: 共通関数 (`MyCommonFunctions.psm1`, `MyCommonFunctions.psd1`)"
-  - "CSV出力フォーマット定義 (本要件定義書内、または別紙)"
-  - "利用手順書（セットアップ方法、`simple-md-wbs`記述方法、CSV連携方法、スクリプト実行方法などを含む） (`docs/user_manual/`)"
-  - "テストケース一覧および実行手順書 (`tests/cases/`)"
-  - "PowerShellコーディングスタンダード (`docs/90_coding_standards.md`)"
-  - "**(オプション) Excel表示最適化VBAマクロ (またはマクロを含むExcelテンプレート)**" # ★ 追加
-  - "**(オプション) VBAマクロ利用手順書**" # ★ 追加
+    - "`Convert-SimpleMdWbsToCsv.ps1`（simple-md-wbs からCSV形式への変換）"
+    - "`Convert-CsvToSimpleMdWbs.ps1`（CSVからsimple-md-wbs形式への変換 - 将来）"
+    - "`ConvertTo-MarkwhenFromSimpleMdWbs.ps1`（simple-md-wbs からMarkwhen形式への変換 - もし維持する場合）"
+  - "PowerShellモジュール: 共通関数（`MyCommonFunctions.psm1`, `MyCommonFunctions.psd1`）"
+  - "CSV出力フォーマット定義（本要件定義書内、または別紙）"
+  - "利用手順書（セットアップ方法、`simple-md-wbs`記述方法、CSV連携方法、スクリプト実行方法などを含む）（`docs/user_manual/`）"
+  - "CSVフォーマット定義（本要件定義書内 `csv_integration.simplemdwbs_to_csv.output_csv_columns` にて定義）"
+  - "テストケース一覧および実行手順書（`tests/cases/`）"
+  - "PowerShellコーディングスタンダード（`docs/90_coding_standards.md`）"
+  - "**（オプション）Excel表示最適化VBAマクロ（またはマクロを含むExcelテンプレート）**" # ★ 追加
+  - "**（オプション）VBAマクロ利用手順書**" # ★ 追加
 
 metadata:
-  document_version: "5.0" # (simple-md-wbs への移行を反映)
-  creation_date: "YYYY-MM-DD" # 本更新日
-  last_modified_by: "[あなたの名前]"
-  status: "Draft - Reflects simple-md-wbs, CSV focus, and VBA macro consideration"
+  document_version: "5.3" # 例: バージョンアップ
+  creation_date: "YYYY-MM-DD" # 更新日
+  last_modified_by: "IT Legacy"
+  status: "Draft - Reflects progress rate format and attribute list finalization"
 
 # ---
 # 変更履歴
 #
 # | 日付       | バージョン | 担当者      | 変更内容                                       |
 # |------------|------------|-------------|------------------------------------------------|
+# | 2025-06-03 | 5.1        | [あなたの名前] | simple-md-wbs仕様書FIX内容を反映。CSV列定義を具体化。VBA連携方針を明記。status追加。 |
 # | 2025-05-31 | 5.0        | IT Legacy   | simple-md-wbs中心への仕様変更、CSV連携の明確化 |
