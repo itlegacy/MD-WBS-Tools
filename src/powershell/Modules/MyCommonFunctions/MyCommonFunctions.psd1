@@ -1,4 +1,4 @@
-# MyCommonFunctions.psd1
+﻿# MyCommonFunctions.psd1
 @{
     RootModule = 'MyCommonFunctions.psm1'
     ModuleVersion = '0.1.0'
