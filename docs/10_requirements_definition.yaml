@@ -37,9 +37,9 @@ functional_requirements:
     element_attributes_definition:
       description: |
         simple-md-wbs の各アイテム（カテゴリおよびタスク）が保持できる属性。
-        **カテゴリ (`%%`行) とタスク (`<!-- -->`内) は同じ属性セットと順序を持つ。**
+        カテゴリ (`%%`行) とタスク (`<!-- -->`内) は同じ属性セットと順序を持つ。
         詳細は `docs/12_wbs_task_syntax_specification.md` の「3.3. 属性フィールド一覧と詳細」を参照のこと。
-      fields_summary: # simple-md-wbs 仕様書で定義される主要な属性名
+      fields_summary: # simple-md-wbs 仕様書で定義される最新の13属性 (新しい順序)
         - "ユーザー記述ID"
         - "開始日（入力）"
         - "終了日（入力）"
@@ -47,6 +47,7 @@ functional_requirements:
         - "関連タスク種別"
         - "関連タスクID"
         - "開始日（実績）"
+        - "終了日（実績）" # ★追加
         - "進捗率"
         - "担当者"
         - "担当組織"
@@ -66,9 +67,9 @@ functional_requirements:
       name: "simple-md-wbs からCSVへのエクスポート"
       details: "simple-md-wbs ファイルを解析し、定義された列構成で**標準順序のCSVファイル**に出力する。"
       output_csv_columns: # プロトタイプとExcelテンプレートを考慮したCSV列構成
-        - name: "A: タスクID" # CSVの列レターと列名を併記
+        - name: "A: 番号" # Excelでの表示名に合わせる (旧タスクID)
           description: "ツールが自動生成する階層的なソート用ID（例: 01.01.00.00）。Excelでの並べ替えに使用。"
-          source_simplemdwbs: "ツール自動生成（Get-DisplaySortKey）"
+          source_simplemdwbs: "ツール自動生成 (Get-DecodedAndMappedAttribute)" # 関数名も最新化
         - name: "B: 大分類"
           description: "H2見出しの名称（該当アイテムのみ）。"
           source_simplemdwbs: "H2見出しテキスト"
@@ -78,26 +79,47 @@ functional_requirements:
         - name: "D: 小分類"
           description: "H4見出しの名称（該当アイテムのみ）。"
           source_simplemdwbs: "H4見出しテキスト"
-        - name: "E: タスク名称"
+        - name: "E: タスクアイテム" # Excelでの表示名に合わせる (旧タスク名称)
           description: "プロジェクト名（H1）またはタスク（リストアイテム）の名称（該当アイテムのみ）。"
           source_simplemdwbs: "H1見出しテキスト / リストアイテムテキスト"
-        - name: "F: 先行有無"
-          description: "関連タスクIDが指定されていれば '有'、なければ '無'（またはブランク）。"
-          source_simplemdwbs: "「関連タスクID」属性の有無からツールが判定"
-        - name: "G: 関連番号（先行タスクID）"
-          description: "解決済みの先行タスクの「タスクID」（A列の形式）。依存関係解決ロジックにより設定。"
-          source_simplemdwbs: "依存関係解決ロジック（「先行タスクID」属性から検索）"
-        - name: "H: 先行後続タスク名"
-          description: "解決済みの先行タスクの名称（カテゴリ名またはタスク名）。依存関係解決ロジックにより設定。"
+        - name: "F: 関連種別" # Excelでの表示名に合わせる (旧先行有無)
+          description: "simple-md-wbs の「関連タスク種別」属性（例: '先行', '後続'）。"
+          source_simplemdwbs: "「関連タスク種別」属性"
+        - name: "G: 関連番号" # Excelでの表示名に合わせる
+          description: "解決済みの先行タスクの「番号」(A列の形式)。依存関係解決ロジックにより設定。"
+          source_simplemdwbs: "依存関係解決ロジック（「関連タスクID」属性から検索）"
+        - name: "H: 関連タスクアイテム" # Excelでの表示名に合わせる
+          description: "解決済みの先行タスクの名称（カテゴリ名またはタスクアイテム名）。依存関係解決ロジックにより設定。"
           source_simplemdwbs: "依存関係解決ロジック"
-        # --- Excelテンプレートの主要列と simple-md-wbs 属性のマッピング ---
-        - name: "N: 担当組織" # ExcelテンプレートのN列想定
-          description: "担当組織名。"
+        - name: "I: 関連有無"
+          description: "Excel側の数式 `=IF(COUNTIF(F5,\"*先行*\")>0,\"○\",\"\")` または `=IF(ISBLANK(G5),\"\",\"○\")` で計算されることを想定。ツールは直接データを出力しない（空欄）。"
+          source_simplemdwbs: "（Excel数式）"
+        - name: "J: コメント" # Excelでの表示名「コメント」（アクションプラン）
+          description: "simple-md-wbs の「コメント」属性。"
+          source_simplemdwbs: "「コメント」属性"
+        # K, L, M, N列はExcel数式のため、CSV出力対象外（または空で出力）
+        - name: "K: 進捗日数"
+          description: "Excel側の数式で計算。ツールは直接データを出力しない（空欄）。"
+          source_simplemdwbs: "（Excel数式）"
+        - name: "L: 作業遅延"
+          description: "Excel側の数式で計算。ツールは直接データを出力しない（空欄）。"
+          source_simplemdwbs: "（Excel数式）"
+        - name: "M: 開始遅延"
+          description: "Excel側の数式で計算。ツールは直接データを出力しない（空欄）。"
+          source_simplemdwbs: "（Excel数式）"
+        - name: "N: 遅延日数"
+          description: "Excel側の数式 `=MAX(L5:M5)` で計算。ツールは直接データを出力しない（空欄）。"
+          source_simplemdwbs: "（Excel数式）"
+        - name: "O: 担当組織"
+          description: "simple-md-wbs の「担当組織」属性。"
           source_simplemdwbs: "「担当組織」属性"
-        - name: "O: 担当者"   # ExcelテンプレートのO列想定
-          description: "担当者名。"
+        - name: "P: 担当者名" # Excelでの表示名に合わせる
+          description: "simple-md-wbs の「担当者」属性。"
           source_simplemdwbs: "「担当者」属性"
-        - name: "Q: 最終更新日" # ExcelテンプレートのQ列
+        - name: "Q: フラグ"
+          description: "Excelユーザー定義の予備列。ツールは直接データを出力しない（空欄）。"
+          source_simplemdwbs: "（ユーザー定義）"
+        - name: "R: 最終更新" # Excelでの表示名に合わせる
           description: "simple-md-wbs の「最終更新日」属性。YYYY-MM-DD形式。"
           source_simplemdwbs: "「最終更新日」属性"
         - name: "S: 開始入力"
@@ -107,33 +129,44 @@ functional_requirements:
           description: "simple-md-wbs の「終了日（入力）」属性。YYYY-MM-DD形式。"
           source_simplemdwbs: "「終了日（入力）」属性"
         - name: "U: 日数入力"
-          description: "simple-md-wbs の「日数（入力）」属性。数値。"
+          description: "simple-md-wbs の「日数（入力）」属性。数値の文字列。"
           source_simplemdwbs: "「日数（入力）」属性"
-        - name: "Y: 進捗率" # ExcelテンプレートのY列
+        # V, W, X列はExcel数式のため、CSV出力対象外
+        - name: "Y: 進捗実績" # Excelでの表示名に合わせる
           description: "simple-md-wbs の「進捗率」属性（パーセント表記の文字列）。"
           source_simplemdwbs: "「進捗率」属性"
-        - name: "Z: 開始日実績" # ExcelテンプレートのZ列
+        - name: "Z: 開始実績" # Excelでの表示名に合わせる
           description: "simple-md-wbs の「開始日（実績）」属性。YYYY-MM-DD形式。"
           source_simplemdwbs: "「開始日（実績）」属性"
-        # --- デバッグ・連携用の追加列 (順序は任意だが、source_simplemdwbsを最新に) ---
-        - name: "ユーザー記述ID（元ID）"
+        - name: "AA: 修了実績" # Excelでの表示名に合わせる
+          description: "simple-md-wbs の「終了日（実績）」属性。YYYY-MM-DD形式。"
+          source_simplemdwbs: "「終了日（実績）」属性" # ★ 新規対応
+        # --- デバッグ・連携用の追加列 (これらはExcelテンプレートには直接表示されない想定) ---
+        - name: "ユーザー記述ID_元" # 列名変更
+          description: "simple-md-wbs 内で定義されたユーザー記述ID。"
           source_simplemdwbs: "「ユーザー記述ID」属性"
-        - name: "関連タスク種別（元）" # 列名変更
+        - name: "関連タスク種別_元" # 列名変更
+          description: "simple-md-wbs 内で定義された関連タスク種別。"
           source_simplemdwbs: "「関連タスク種別」属性"
-        - name: "関連タスクID（元）" # 列名変更
-          source_simplemdwbs: "「先行タスクID」属性"
-    csv_to_simplemdwbs: # ★ 新規セクション
-      id: "CSV-TO-SIMPLEMDWBS"
-      name: "標準順序CSVからsimple-md-wbs形式への変換"
-      status: "計画中 / 将来実装"
-      details: "定義された列構成の**標準順序のCSVファイル**を読み込み、simple-md-wbs 形式のMarkdownテキストを生成する。"
-      input_csv_columns_reference: "上記 `simplemdwbs_to_csv.output_csv_columns` の列定義を参照。"
-      hierarchy_reconstruction_logic: |
-        **CSVのA列「タスクID」（表示用ソートキー）をパースし、ドット区切りの各部分から階層レベルを判断する。
-        同じ親IDを持つ連続した行を同じカテゴリ配下としてグループ化し、適切なMarkdown見出しレベル（H1-H4）またはリストアイテムとして出力する。**
-      attribute_mapping_logic: |
-        **CSVの各列の値を、対応する simple-md-wbs の属性フィールド（%%行またはHTMLコメント内）に正しい順序でマッピングする。
-        空のセルは空の属性フィールドとして扱う。**
+        - name: "関連タスクID_元" # 列名変更
+          description: "simple-md-wbs 内で定義された先行タスクのユーザー記述ID。"
+          source_simplemdwbs: "「関連タスクID」属性"
+        - name: "アイテム種別_デバッグ用" # 列名変更
+          description: "Project, Category1, Category2, Category3, Task のいずれか。"
+          source_simplemdwbs: "ツール内部判定"
+
+  csv_to_simplemdwbs: # ★ 新規セクション
+    id: "CSV-TO-SIMPLEMDWBS"
+    name: "標準順序CSVからsimple-md-wbs形式への変換"
+    status: "計画中 / 将来実装"
+    details: "定義された列構成の**標準順序のCSVファイル**を読み込み、simple-md-wbs 形式のMarkdownテキストを生成する。"
+    input_csv_columns_reference: "上記 `simplemdwbs_to_csv.output_csv_columns` の列定義を参照。"
+    hierarchy_reconstruction_logic: |
+      **CSVのA列「タスクID」（表示用ソートキー）をパースし、ドット区切りの各部分から階層レベルを判断する。
+      同じ親IDを持つ連続した行を同じカテゴリ配下としてグループ化し、適切なMarkdown見出しレベル（H1-H4）またはリストアイテムとして出力する。**
+    attribute_mapping_logic: |
+      **CSVの各列の値を、対応する simple-md-wbs の属性フィールド（%%行またはHTMLコメント内）に正しい順序でマッピングする。
+      空のセルは空の属性フィールドとして扱う。**
 
   excel_display_optimization_via_vba: # ★ 新規セクション（オプション機能として）
     id: "EXCEL-VBA-ORDERING"
