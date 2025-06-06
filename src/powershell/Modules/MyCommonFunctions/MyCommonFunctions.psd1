@@ -8,6 +8,6 @@
     FunctionsToExport = @(
         'Get-DecodedAndMappedAttribute',
         'ConvertTo-AttributeObject',
-        'Reset-WbsCounters'  # ← これを追加
+        'Reset-WbsCounters'
     )
 }
