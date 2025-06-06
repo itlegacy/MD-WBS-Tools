@@ -7,7 +7,7 @@ project_overview:
     simple-md-wbs 記法（Markdownベース）を用いたWBSの直感的作成・編集と、Markmapによる視覚化を支援する。
     **Excel（CSV経由）との連携を主とし、PowerShellスクリプトは標準的な階層順序のCSVを入出力する。
     Excelでの特殊な表示順序への対応は、オプションとして提供するVBAマクロで行うことを想定する。**
-    PowerShellスクリプトを核とし、ローカル環境で完結するツールセットを提供する。
+    PowerShellスクリリプトを核とし、ローカル環境で完結するツールセットを提供する。
   scope: |
     simple-md-wbs 記法の定義（詳細は docs/12_wbs_task_syntax_specification.md を参照）、
     および当該記法で記述されたファイルと標準順序のCSVファイル間の双方向変換を行うPowerShellスクリプトの開発。
@@ -67,112 +67,97 @@ functional_requirements:
       name: "simple-md-wbs からCSVへのエクスポート"
       details: "simple-md-wbs ファイルを解析し、定義された列構成で**標準順序のCSVファイル**に出力する。"
       output_csv_columns: # CSVサンプルとExcelテンプレート仕様書 Ver.0.3 を参照
-        - name: "番号" # A列 (CSVサンプル)
+        - name: "番号"
           description: "ツールが自動生成する階層的なソート用ID（Excelでの並べ替えに使用）。"
           source_simplemdwbs: "ツール自動生成 (Get-DecodedAndMappedAttribute)"
-        - name: "大分類" # B列 (CSVサンプル)
+        - name: "大分類"
           description: "H2見出しの名称（該当アイテムのみ）。"
           source_simplemdwbs: "H2見出しテキスト"
-        - name: "中分類" # C列 (CSVサンプル)
+        - name: "中分類"
           description: "H3見出しの名称（該当アイテムのみ）。"
           source_simplemdwbs: "H3見出しテキスト"
-        - name: "小分類" # D列 (CSVサンプル)
+        - name: "小分類"
           description: "H4見出しの名称（該当アイテムのみ）。"
           source_simplemdwbs: "H4見出しテキスト"
-        - name: "タスク名称" # E列 (CSVサンプル) -> Excelテンプレートでは「タスクアイテム」
+        - name: "タスクアイテム"
           description: "プロジェクト名(H1)またはタスク(リストアイテム)の名称。"
           source_simplemdwbs: "H1見出しテキスト / リストアイテムテキスト"
-        - name: "タスクID" # A列 (CSVヘッダー)
-          description: "ツールが自動生成する階層的なソート用ID。"
-          source_simplemdwbs: "ツール自動生成 (Get-DecodedAndMappedAttribute)"
-        - name: "番号" # B列 (CSVヘッダー)
-          description: "ツールが自動生成する階層的なソート用ID（Excelでの並べ替えに使用）。"
-          source_simplemdwbs: "ツール自動生成 (Get-DecodedAndMappedAttribute)" # タスクIDと同じソース
-        - name: "大分類" # C列 (CSVヘッダー)
-          description: "H2見出しの名称（該当アイテムのみ）。"
-          source_simplemdwbs: "H2見出しテキスト"
-        - name: "中分類" # D列 (CSVヘッダー)
-          description: "H3見出しの名称（該当アイテムのみ）。"
-          source_simplemdwbs: "H3見出しテキスト"
-        - name: "小分類" # E列 (CSVヘッダー)
-          description: "H4見出しの名称（該当アイテムのみ）。"
-          source_simplemdwbs: "H4見出しテキスト"
-        - name: "タスクアイテム" # F列 (CSVヘッダー)
-          description: "プロジェクト名(H1)またはタスク(リストアイテム)の名称。"
-          source_simplemdwbs: "H1見出しテキスト / リストアイテムテキスト"
-        - name: "関連種別" # G列 (CSVヘッダー)
+        - name: "関連種別"
           description: "simple-md-wbs の「関連タスク種別」属性。"
           source_simplemdwbs: "「関連タスク種別」属性"
-        - name: "関連番号" # H列 (CSVヘッダー)
+        - name: "関連番号"
           description: "解決済みの先行タスクの「番号」(A列の形式)。"
           source_simplemdwbs: "依存関係解決ロジック"
-        - name: "関連タスクアイテム" # I列 (CSVヘッダー)
+        - name: "関連タスクアイテム"
           description: "解決済みの先行タスクの名称。"
           source_simplemdwbs: "依存関係解決ロジック"
-        - name: "関連有無" # J列 (CSVヘッダー)
+        - name: "関連有無"
           description: "先行タスクの有無を示すフラグ（例: ○）。ツールが生成。"
           source_simplemdwbs: "（ツール生成）"
-        - name: "コメント" # K列 (CSVヘッダー)
+        - name: "コメント"
           description: "simple-md-wbs の「コメント」属性。"
           source_simplemdwbs: "「コメント」属性"
-        - name: "進捗日数" # L列 (CSVヘッダー)
+        - name: "進捗日数"
           description: "Excel側の数式で計算。ツールは空欄を出力。"
           source_simplemdwbs: "（Excel数式）"
-        - name: "作業遅延" # M列 (CSVヘッダー)
+        - name: "作業遅延"
           description: "Excel側の数式で計算。ツールは空欄を出力。"
           source_simplemdwbs: "（Excel数式）"
-        - name: "開始遅延" # N列 (CSVヘッダー)
+        - name: "開始遅延"
           description: "Excel側の数式で計算。ツールは空欄を出力。"
           source_simplemdwbs: "（Excel数式）"
-        - name: "遅延日数" # O列 (CSVヘッダー)
+        - name: "遅延日数"
           description: "Excel側の数式で計算。ツールは空欄を出力。"
           source_simplemdwbs: "（Excel数式）"
-        - name: "担当組織" # P列 (CSVヘッダー)
+        - name: "担当組織"
           description: "simple-md-wbs の「担当組織」属性。"
           source_simplemdwbs: "「担当組織」属性"
-        - name: "担当者名" # Q列 (CSVヘッダー)
+        - name: "担当者名"
           description: "simple-md-wbs の「担当者」属性。"
           source_simplemdwbs: "「担当者」属性"
-        - name: "フラグ" # R列 (CSVヘッダー)
+        - name: "フラグ"
           description: "Excelユーザー定義の予備列。ツールは空欄を出力。"
           source_simplemdwbs: "（ユーザー定義）"
-        - name: "最終更新" # S列 (CSVヘッダー)
+        - name: "最終更新"
           description: "simple-md-wbs の「最終更新日」属性。"
           source_simplemdwbs: "「最終更新日」属性"
-        - name: "開始入力" # T列 (CSVヘッダー)
+        - name: "開始入力"
           description: "simple-md-wbs の「開始日（入力）」属性。"
           source_simplemdwbs: "「開始日（入力）」属性"
-        - name: "終了入力" # U列 (CSVヘッダー)
+        - name: "終了入力"
           description: "simple-md-wbs の「終了日（入力）」属性。"
           source_simplemdwbs: "「終了日（入力）」属性"
-        - name: "日数入力" # V列 (CSVヘッダー)
+        - name: "日数入力"
           description: "simple-md-wbs の「日数（入力）」属性。"
           source_simplemdwbs: "「日数（入力）」属性"
-        - name: "開始計画" # W列 (CSVヘッダー)
+        - name: "開始計画"
           description: "Excel側の数式で計算。ツールは空欄を出力。"
           source_simplemdwbs: "（Excel数式）"
-        - name: "終了計画" # X列 (CSVヘッダー)
+        - name: "終了計画"
           description: "Excel側の数式で計算。ツールは空欄を出力。"
           source_simplemdwbs: "（Excel数式）"
-        - name: "日数計画" # Y列 (CSVヘッダー)
+        - name: "日数計画"
           description: "Excel側の数式で計算。ツールは空欄を出力。"
           source_simplemdwbs: "（Excel数式）"
-        - name: "進捗実績" # Z列 (CSVヘッダー)
+        - name: "進捗実績"
           description: "simple-md-wbs の「進捗率」属性。"
           source_simplemdwbs: "「進捗率」属性"
-        - name: "開始実績" # AA列 (CSVヘッダー)
+        - name: "開始実績"
           description: "simple-md-wbs の「開始日（実績）」属性。"
           source_simplemdwbs: "「開始日（実績）」属性"
-        - name: "修了実績" # AB列 (CSVヘッダー)
+        - name: "修了実績"
           description: "simple-md-wbs の「終了日（実績）」属性。"
           source_simplemdwbs: "「終了日（実績）」属性"
-        - name: "" # AC列 (CSVヘッダーで空の列名)
+        - name: "" # CSVヘッダーの28番目の空列
           description: "CSVファイルヘッダーで名称が空の列。ツールは空欄を出力。"
           source_simplemdwbs: "（ツールは空欄を出力）"
-        - name: "開始入力は平日？" # AD列 (CSVヘッダー)
+        - name: "" # CSVヘッダーの29番目の空列
+          description: "CSVファイルヘッダーで名称が空の列。ツールは空欄を出力。"
+          source_simplemdwbs: "（ツールは空欄を出力）"
+        - name: "開始入力は平日？"
           description: "Excel側で利用される情報。ツールは空欄を出力。"
           source_simplemdwbs: "（ツールは空欄を出力/Excel側利用）"
-        - name: "終了入力は平日？" # AE列 (CSVヘッダー)
+        - name: "終了入力は平日？"
           description: "Excel側で利用される情報。ツールは空欄を出力。"
           source_simplemdwbs: "（ツールは空欄を出力/Excel側利用）"
 

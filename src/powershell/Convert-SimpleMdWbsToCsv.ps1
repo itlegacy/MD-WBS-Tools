@@ -104,16 +104,20 @@ begin {
                 # 行末のHTML様コメントを除去 (より堅牢な正規表現を検討してもよい)
                 $attributeString = ($fullAttributeLine -replace "\s*<!--.*?-->\s*$", "").Trim() # HTMLコメントを除去
                 $attributesObject = ConvertTo-AttributeObject -AttributeString $attributeString
-
+                Write-Verbose "For H1 '$($item.Category1Name)', AttributeString: '$attributeString'"
                 # Set-ItemAttributes の代わりに直接コピー
                 if ($null -ne $attributesObject) {
+                    Write-Verbose "  Populating H1 item from attributesObject (UserDefinedId: '$($attributesObject.UserDefinedId)')"
                     foreach ($property in $attributesObject.PSObject.Properties) {
                         $propName = $property.Name
                         $propValue = $property.Value
                         if ($item.PSObject.Properties.Name -contains $propName) {
                             $item.$propName = $propValue
+                            Write-Verbose "    Set `$item.$propName = '$($propValue)'"
                         }
                     }
+                } else {
+                    Write-Verbose "  ConvertTo-AttributeObject returned null for H1 attributes."
                 }
 
                 $i = $i + 2
@@ -137,16 +141,20 @@ begin {
                 # 行末のHTML様コメントを除去 (より堅牢な正規表現を検討してもよい)
                 $attributeString = ($fullAttributeLine -replace "\s*<!--.*?-->\s*$", "").Trim() # HTMLコメントを除去
                 $attributesObject = ConvertTo-AttributeObject -AttributeString $attributeString
-
+                Write-Verbose "For H2 '$($item.Category2Name)', AttributeString: '$attributeString'"
                 # Set-ItemAttributes の代わりに直接コピー
                 if ($null -ne $attributesObject) {
+                    Write-Verbose "  Populating H2 item from attributesObject (UserDefinedId: '$($attributesObject.UserDefinedId)')"
                     foreach ($property in $attributesObject.PSObject.Properties) {
                         $propName = $property.Name
                         $propValue = $property.Value
                         if ($item.PSObject.Properties.Name -contains $propName) {
                             $item.$propName = $propValue
+                            Write-Verbose "    Set `$item.$propName = '$($propValue)'"
                         }
                     }
+                } else {
+                    Write-Verbose "  ConvertTo-AttributeObject returned null for H2 attributes."
                 }
 
                 $i = $i + 2
@@ -171,16 +179,20 @@ begin {
                 # 行末のHTML様コメントを除去 (より堅牢な正規表現を検討してもよい)
                 $attributeString = ($fullAttributeLine -replace "\s*<!--.*?-->\s*$", "").Trim() # HTMLコメントを除去
                 $attributesObject = ConvertTo-AttributeObject -AttributeString $attributeString
-
+                Write-Verbose "For H3 '$($item.Category3Name)', AttributeString: '$attributeString'"
                 # Set-ItemAttributes の代わりに直接コピー
                 if ($null -ne $attributesObject) {
+                    Write-Verbose "  Populating H3 item from attributesObject (UserDefinedId: '$($attributesObject.UserDefinedId)')"
                     foreach ($property in $attributesObject.PSObject.Properties) {
                         $propName = $property.Name
                         $propValue = $property.Value
                         if ($item.PSObject.Properties.Name -contains $propName) {
                             $item.$propName = $propValue
+                            Write-Verbose "    Set `$item.$propName = '$($propValue)'"
                         }
                     }
+                } else {
+                    Write-Verbose "  ConvertTo-AttributeObject returned null for H3 attributes."
                 }
 
                 $i = $i + 2
@@ -205,16 +217,20 @@ begin {
                 # 行末のHTML様コメントを除去 (より堅牢な正規表現を検討してもよい)
                 $attributeString = ($fullAttributeLine -replace "\s*<!--.*?-->\s*$", "").Trim() # HTMLコメントを除去
                 $attributesObject = ConvertTo-AttributeObject -AttributeString $attributeString
-
+                Write-Verbose "For H4 '$($item.Category4Name)', AttributeString: '$attributeString'"
                 # Set-ItemAttributes の代わりに直接コピー
                 if ($null -ne $attributesObject) {
+                    Write-Verbose "  Populating H4 item from attributesObject (UserDefinedId: '$($attributesObject.UserDefinedId)')"
                     foreach ($property in $attributesObject.PSObject.Properties) {
                         $propName = $property.Name
                         $propValue = $property.Value
                         if ($item.PSObject.Properties.Name -contains $propName) {
                             $item.$propName = $propValue
+                            Write-Verbose "    Set `$item.$propName = '$($propValue)'"
                         }
                     }
+                } else {
+                    Write-Verbose "  ConvertTo-AttributeObject returned null for H4 attributes."
                 }
 
                 $i = $i + 2
@@ -236,15 +252,20 @@ begin {
             $htmlCommentAttributes = $matches[2]
             if (-not [string]::IsNullOrWhiteSpace($htmlCommentAttributes)) {
                 $attributesObject = ConvertTo-AttributeObject -AttributeString $htmlCommentAttributes # attributesObject に変更
+                Write-Verbose "For Task '$($item.TaskName)', AttributeString from HTML comment: '$htmlCommentAttributes'"
                 # Set-ItemAttributes の代わりに直接コピー
                 if ($null -ne $attributesObject) {
+                    Write-Verbose "  Populating Task item from attributesObject (UserDefinedId: '$($attributesObject.UserDefinedId)')"
                     foreach ($property in $attributesObject.PSObject.Properties) {
                         $propName = $property.Name
                         $propValue = $property.Value
                         if ($item.PSObject.Properties.Name -contains $propName) {
                             $item.$propName = $propValue
+                            Write-Verbose "    Set `$item.$propName = '$($propValue)'"
                         }
                     }
+                } else {
+                    Write-Verbose "  ConvertTo-AttributeObject returned null for Task attributes."
                 }
             }
             $script:wbsItems.Add($item)
@@ -287,8 +308,43 @@ end {
     # CSV出力処理、最終メッセージ表示
     # アクション1.4: CSV出力 (Select-Object) の修正
     $csvOutput = $script:wbsItems | Select-Object -Property @(
-        @{Name="タスクID"; Expression={$_.DisplaySortKey}} # CSVヘッダーの1列目
-        @{Name="番号"; Expression={$_.DisplaySortKey}} # CSVヘッダーの2列目
+        # @{Name="タスクID"; Expression={$_.DisplaySortKey}} # CSVヘッダーの1列目
+        @{Name="タスクID"; Expression={
+            $id = $_.DisplaySortKey
+            $parts = $id.Split('.')
+            $outputParts = [System.Collections.Generic.List[string]]::new()
+
+            if ($_.HierarchyLevel -eq 1) { # Project H1: "P"
+                # Sort ID is 00.00.00.00. Display as "0"
+                $outputParts.Add("0") 
+            } elseif ($_.HierarchyLevel -eq 2) { # Category1 H2: "C1"
+                # Sort ID is L2.00.00.00 (e.g., 01.00.00.00)
+                $outputParts.Add([int]$parts[0]) # Category1 number (L2)
+            } elseif ($_.HierarchyLevel -eq 3) { # Category2 H3: "C1.C2"
+                # Sort ID is L2.L3.00.00 (e.g., 01.02.00.00)
+                $outputParts.Add([int]$parts[0]) # Category1 number (L2)
+                $outputParts.Add([int]$parts[1]) # Category2 number (L3)
+            } elseif ($_.HierarchyLevel -eq 4) { # Category3 H4: "C1.C2.C3"
+                # Sort ID is L2.L3.L4.00 (e.g., 01.02.03.00)
+                $outputParts.Add([int]$parts[0]) # Category1 number (L2)
+                $outputParts.Add([int]$parts[1]) # Category2 number (L3)
+                $outputParts.Add([int]$parts[2]) # Category3 number (L4)
+            } elseif ($_.HierarchyLevel -eq 5) { # Task: "C1.C2.C3.T" (4 segments)
+                # Sort ID is L2.L3.L4.TaskSeq (e.g., 01.02.03.04)
+                if ($parts.Count -ge 4) { # Expecting 4 parts for task's sort ID
+                    $outputParts.Add([int]$parts[0]) # Cat1 number (L2)
+                    $outputParts.Add([int]$parts[1]) # Cat2 number (L3)
+                    $outputParts.Add([int]$parts[2]) # Cat3 number (L4)
+                    $outputParts.Add([int]$parts[3]) # Task Sequence number
+                } else {
+                    # Fallback for unexpected DisplaySortKey format for a task
+                    Write-Warning "Task item '$($_.TaskName)' (UserDefinedId: '$($_.UserDefinedId)') has an unexpected DisplaySortKey format: '$id'. Falling back to full key for タスクID."
+                    return $id 
+                }
+            }
+            $outputParts -join '.'
+        }}
+        @{Name="番号"; Expression={$_.DisplaySortKey}} # This remains the sortable, zero-padded ID
         @{Name="大分類"; Expression={ if ($_.HierarchyLevel -eq 2) { $_.Category2Name } else { "" } }}
         @{Name="中分類"; Expression={ if ($_.HierarchyLevel -eq 3) { $_.Category3Name } else { "" } }}
         @{Name="小分類"; Expression={ if ($_.HierarchyLevel -eq 4) { $_.Category4Name } else { "" } }}
@@ -300,26 +356,28 @@ end {
         @{Name="関連種別"; Expression={$_.DependencyType}}
         @{Name="関連番号"; Expression={$_.ResolvedPredecessorId}} # 依存関係解決後に設定されるプロパティ
         @{Name="関連タスクアイテム"; Expression={$_.ResolvedPredecessorName}} # 依存関係解決後に設定されるプロパティ
-        @{Name="関連有無"; Expression={ if (-not [string]::IsNullOrWhiteSpace($_.PredecessorUserDefinedId)) { "○" } else { "" } }} # ツールが生成
+        @{Name="関連有無"; Expression={""}} # Excelテンプレートでは式が埋め込まれているため、CSVでは空文字
         @{Name="コメント"; Expression={$_.ItemComment}}
         @{Name="進捗日数"; Expression={""}} # Excel数式
         @{Name="作業遅延"; Expression={""}} # Excel数式
         @{Name="開始遅延"; Expression={""}} # Excel数式
         @{Name="遅延日数"; Expression={""}} # Excel数式
-        @{Name="担当組織"; Expression={$_.Organization}}
-        @{Name="担当者名"; Expression={$_.Assignee}}
+        @{Name="担当組織"; Expression={$_.Organization}} # simple-md-wbs属性 No.11
+        @{Name="担当者名"; Expression={$_.Assignee}}     # simple-md-wbs属性 No.10
         @{Name="フラグ"; Expression={""}} # ユーザー定義
-        @{Name="最終更新"; Expression={$_.LastUpdatedDate}}
+        @{Name="最終更新"; Expression={$_.LastUpdatedDate}} # simple-md-wbs属性 No.12
         @{Name="開始入力"; Expression={$_.StartDateInput}}
         @{Name="終了入力"; Expression={$_.EndDateInput}}
         @{Name="日数入力"; Expression={$_.DurationInput}}
         @{Name="開始計画"; Expression={""}} # Excel数式
         @{Name="終了計画"; Expression={""}} # Excel数式
         @{Name="日数計画"; Expression={""}} # Excel数式
-        @{Name="進捗実績"; Expression={$_.Progress}}
-        @{Name="開始実績"; Expression={$_.ActualStartDate}}
-        @{Name="修了実績"; Expression={$_.ActualEndDate}}
-        @{Name=""; Expression={""}} # CSVヘッダーの29列目の空列 (インデックス28)
+        @{Name="進捗実績"; Expression={$_.Progress}}         # simple-md-wbs属性 No.9
+        @{Name="開始実績"; Expression={$_.ActualStartDate}}  # simple-md-wbs属性 No.7
+        @{Name="修了実績"; Expression={$_.ActualEndDate}}    # simple-md-wbs属性 No.8
+        @{Name="_emptyColumn1_"; Expression={""}} # Placeholder for the 1st empty column after 修了実績
+        @{Name="_emptyColumn2_"; Expression={""}} # Placeholder for the 2nd empty column after 修了実績
+        @{Name="_emptyColumn3_"; Expression={""}} # Placeholder for the 3rd empty column after 修了実績
         @{Name="開始入力は平日？"; Expression={""}} # ツールは空欄を出力/Excel側利用
         @{Name="終了入力は平日？"; Expression={""}} # ツールは空欄を出力/Excel側利用
         # --- 以下はデバッグ用。最終的なCSV仕様に含まれない場合は削除またはコメントアウト ---
