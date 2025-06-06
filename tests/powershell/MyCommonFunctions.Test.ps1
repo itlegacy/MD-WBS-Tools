@@ -1,7 +1,16 @@
 ﻿# MyCommonFunctions.Test.ps1
-$modulePath = Join-Path $PSScriptRoot "../../src/powershell/Modules/MyCommonFunctions/MyCommonFunctions.psd1" # モジュールへのパスを調整
-Write-Host "Module Path: $modulePath" # ★ 追加
-Import-Module $modulePath -Force
+
+# Pester v5 以降では BeforeAll/AfterAll などがスクリプトスコープで実行されるため、
+# モジュールをインポートする場所や方法に注意が必要。
+$modulePath = Join-Path $PSScriptRoot "../../src/powershell/Modules/MyCommonFunctions/MyCommonFunctions.psd1"
+if (-not (Test-Path $modulePath)) {
+    Write-Error "Module manifest not found at $modulePath. Ensure the test script is in the same directory as the module files or adjust the path."
+    exit 1
+}
+
+BeforeAll {
+    Import-Module $modulePath -Force
+}
 
 Describe "Get-DecodedAndMappedAttribute Tests" {
     BeforeEach {
@@ -9,25 +18,21 @@ Describe "Get-DecodedAndMappedAttribute Tests" {
     }
 
     It "Should return correct ID for Project (H1)" {
-        # Pending "PesterのParameterBindingValidationExceptionのためスキップ" # Pendingを解除
         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "01.00.00.00"
     }
 
     It "Should return correct ID for first Category1 (H2) after a Project" {
-        # Pending "PesterのParameterBindingValidationExceptionのためスキップ" # Pendingを解除
         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null # 前提: H1が一度呼ばれる
         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "01.01.00.00"
     }
 
     It "Should return correct ID for first Category2 (H3) after Project and Category1" {
-        # Pending "PesterのParameterBindingValidationExceptionのためスキップ" # Pendingを解除
         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null
         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null
         Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Should -Be "01.01.01.00"
     }
 
     It "Should return correct ID for first Category3 (H4) after Project, Cat1, Cat2" {
-        # Pending "PesterのParameterBindingValidationExceptionのためスキップ" # Pendingを解除
         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null
         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null
         Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null
@@ -35,7 +40,6 @@ Describe "Get-DecodedAndMappedAttribute Tests" {
     }
 
     It "Should return correct ID for first Task after Project, Cat1, Cat2, Cat3" {
-        # Pending "PesterのParameterBindingValidationExceptionのためスキップ" # Pendingを解除
         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null
         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null
         Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null
@@ -45,7 +49,6 @@ Describe "Get-DecodedAndMappedAttribute Tests" {
 
     # 連続呼び出しやカウンターリセットのテストも追加
     It "Should return correct ID sequence for multiple categories and tasks" {
-        # Pending "PesterのParameterBindingValidationExceptionのためスキップ" # Pendingを解除
         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "01.00.00.00"
         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "01.01.00.00"
         Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.00.00.01" # 親がCat1なのでL3,L4は00
@@ -55,7 +58,6 @@ Describe "Get-DecodedAndMappedAttribute Tests" {
     }
 
     It "Should reset lower level counters when switching to a higher or same level category" {
-        # Pending "PesterのParameterBindingValidationExceptionのためスキップ" # Pendingを解除
         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null # 01.00.00.00
         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null # 01.01.00.00
         Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null # 01.01.01.00
@@ -91,54 +93,66 @@ Describe "ConvertTo-AttributeObject Tests" {
         $result.ItemComment              | Should -Be "フルコメントです"
     }
 
-    It "Should handle a 13-attribute string with many empty fields including new date fields" {
-        $attrString = "ID02,,,,,,,,,,,部分コメントのみ" # 全13属性, 12番目の最終更新日まで空
+    It "Should handle an attribute string with many empty fields (13 attributes)" {
+        $attrString = "ID02,,,,,,,,,,,," # 全13属性、すべて空（ID以外）
         $result = ConvertTo-AttributeObject -AttributeString $attrString
-        $result.UserDefinedId            | Should -Be "ID02"
-        $result.StartDateInput           | Should -Be ""
-        $result.ActualEndDate            | Should -Be ""
-        $result.LastUpdatedDate          | Should -Be "部分コメントのみ"
-        $result.ItemComment              | Should -Be ""
-    }
-
-    It "Should handle a 13-attribute string with only ID, dates, and comment" {
-        #                UID,   SDi, EDi, DUi, DepT,PID, ASD, AED, Prog,Asgn,Org, LUD, Comment
-        $attrString = "ID03,2025-02-01,,,,,2025-02-02,2025-02-03,,,2025-02-04,IDと日付とコメント"
-        $result = ConvertTo-AttributeObject -AttributeString $attrString
-        $result.UserDefinedId     | Should -Be "ID03"
-        $result.StartDateInput    | Should -Be "2025-02-01"
-        $result.EndDateInput      | Should -Be ""
-        $result.ActualStartDate   | Should -Be "2025-02-02"
-        $result.ActualEndDate     | Should -Be "2025-02-03"
-        $result.Organization      | Should -Be "2025-02-04" # 注意: この期待値は関数のロジックと一致しない可能性があります。入力文字列では11番目の要素が "2025-02-04" です。
-        $result.LastUpdatedDate   | Should -Be "IDと日付とコメント"
-        $result.ItemComment       | Should -Be ""
-    }
-
-    It "Should handle a 13-attribute string with a comment containing commas" {
-        #                UID,SDi,EDi,DUi,DepT,PID,ASD,AED,Prog,Asgn,Org,LUD, Comment1, Comment2, Comment3
-        $attrString = "ID04,,,,,,,,,,,コメント,カンマ入り,です"
-        $result = ConvertTo-AttributeObject -AttributeString $attrString
-        $result.UserDefinedId     | Should -Be "ID04"
-        $result.LastUpdatedDate   | Should -Be "コメント"
-        $result.ItemComment       | Should -Be "カンマ入り,です"
-    }
-
-    # 以前の特殊文字テストも13属性に合わせて調整
-    It "Should handle an attribute string with various special characters in comment (13 attributes)" {
-        $expectedLastUpdatedDate = '!@#$%^&*()_+=-~[]\{}|;'':""' # 12番目の要素 (最終更新日)
-        $expectedItemComment = './<>?'                            # 13番目の要素 (コメント)
-        #                UID,SDi,EDi,DUi,DepT,PID, ASD, AED, Prog,Asgn,Org, LUD, Comment
-        $attrString = "ID06,,,,,,,,,,,$expectedLastUpdatedDate,$expectedItemComment"
-        $result = ConvertTo-AttributeObject -AttributeString $attrString
-        $result.UserDefinedId | Should -Be "ID06"
+        $result.UserDefinedId | Should -Be "ID02"
+        $result.EndDateInput  | Should -Be ""
         $result.ActualEndDate | Should -Be ""
-        $result.LastUpdatedDate | Should -Be $expectedLastUpdatedDate
-        $result.ItemComment | Should -Be $expectedItemComment
+        $result.LastUpdatedDate | Should -Be ""
+        $result.ItemComment   | Should -Be ""
+    }
+
+    It "Should correctly parse when only some attributes are provided (less than 13)" {
+        $attrString = "ID03,,,,,,,,,,11番目の要素(組織)" # 11属性しかない
+        $result = ConvertTo-AttributeObject -AttributeString $attrString
+        $result.UserDefinedId   | Should -Be "ID03"
+        $result.Organization    | Should -Be "11番目の要素(組織)"
+        $result.LastUpdatedDate | Should -Be "" # 12番目の属性はないので空
+        $result.ItemComment     | Should -Be "" # 13番目の属性はないので空
+    }
+
+    It "Should correctly parse comment when attributes are exactly 13" {
+        $attrString = "ID04,,,,,,,,,,,,13番目の要素(コメント)" # 13属性
+        $result = ConvertTo-AttributeObject -AttributeString $attrString
+        $result.UserDefinedId   | Should -Be "ID04"
+        $result.LastUpdatedDate | Should -Be "" # 12番目の属性は空
+        $result.ItemComment     | Should -Be "13番目の要素(コメント)"
+    }
+
+    It "Should correctly parse comment containing commas (more than 13 elements)" {
+        $attrString = "ID05,,,,,,,,,,,,コメント,カンマ入り,です" # 13属性以上
+        $result = ConvertTo-AttributeObject -AttributeString $attrString
+        $result.UserDefinedId   | Should -Be "ID05"
+        $result.LastUpdatedDate | Should -Be "" # 12番目の属性は空
+        $result.ItemComment     | Should -Be "コメント,カンマ入り,です"
+    }
+
+    It "Should handle special characters in comment (13th element)" {
+        $expectedComment = '!@#$%^&*()_+=-~[]\{}|;'':"",./<>?' # HTMLエンティティをデコード後の文字に修正
+        $attrString = "ID06,,,,,,,,,,,,$expectedComment"
+        $result = ConvertTo-AttributeObject -AttributeString $attrString
+        $result.UserDefinedId   | Should -Be "ID06"
+        $result.LastUpdatedDate | Should -Be ""
+        $result.ItemComment     | Should -Be $expectedComment
+    }
+
+    It "Should handle special characters across LastUpdatedDate and ItemComment" {
+        $expectedLastUpdatedDate = "LUD_!@#$"
+        $expectedItemComment = "Comment_%^&*"
+        $attrString = "ID07,,,,,,,,,,,$expectedLastUpdatedDate,$expectedItemComment"
+        $result = ConvertTo-AttributeObject -AttributeString $attrString
+        $result.UserDefinedId     | Should -Be "ID07"
+        $result.LastUpdatedDate   | Should -Be $expectedLastUpdatedDate
+        $result.ItemComment       | Should -Be $expectedItemComment
     }
 
     It "Should return null for a null or whitespace string" {
         (ConvertTo-AttributeObject -AttributeString $null) | Should -BeNullOrEmpty
         (ConvertTo-AttributeObject -AttributeString "   ") | Should -BeNullOrEmpty
     }
+}
+
+AfterAll {
+    Remove-Module MyCommonFunctions -ErrorAction SilentlyContinue
 }

@@ -23,7 +23,16 @@
     2. 本ロードマップ（`01_project_roadmap.md`）のFIX。 **（本レビューでFIX）**
     3. [README (`00_README.md`)](./00_README.md) のFIX。 **（完了）**
     4. [要件定義書 (`10_requirements_definition.yaml`)](./10_requirements_definition.yaml) のFIX。 **（完了）**
-    5. `Convert-SimpleMdWbsToCsv.ps1` のリファクタリング（PowerShellベストプラクティス適用、エラーハンドリング基礎、ログ出力整備）。 **（完了）**
+    5. `Convert-SimpleMdWbsToCsv.ps1` のリファクタリングを実施し、以下の点を整備。 **（完了）**
+        * スクリプトの基本構造を確立:
+            * `[CmdletBinding()]` 属性の追加。
+            * `param()` ブロックの整備（型指定、Mandatory属性、ヘルプメッセージ、ファイルパス検証）。
+            * `begin`, `process`, `end` ブロックの導入と、各ブロックでの処理の明確化（モジュールインポート、変数初期化、メイン処理、CSV出力等）。
+        * `MyCommonFunctions` モジュールの適切なインポートと利用（例: `Reset-WbsCounters` の呼び出し）。
+        * WBSアイテム（`$item`）オブジェクトのプロパティを、`docs/12_wbs_task_syntax_specification.md` で定義された最新の13属性に完全準拠させる形で初期化・データ格納。
+        * `ConvertTo-AttributeObject` 関数（モジュール内）からの属性マッピングを、最新の13属性に合わせて修正。
+        * CSV出力処理 (`Export-Csv`) において、`docs/10_requirements_definition.yaml` の `output_csv_columns` セクションで定義されたCSV列定義（列名、順序、対象プロパティ）と完全に一致する列構成とデータマッピングを実現。
+        * スクリプトスコープ変数（例: `$script:wbsItems`, `$script:currentCategoryNames`）の適切な管理。
     6. 共通関数（`Get-DecodedAndMappedAttribute`, `ConvertTo-AttributeObject`, `Reset-WbsCounters`）の `MyCommonFunctions` モジュールへの移動とマニフェスト整備。 **（完了）**
     7. `MyCommonFunctions` モジュール内主要関数の単体テスト作成と全テストパス。 **（完了）**
 * **成果物:**

@@ -1,5 +1,5 @@
-﻿# MyCommonFunctions.psm1
-Set-StrictMode -Version Latest
+﻿Set-StrictMode -Version Latest
+# MyCommonFunctions.psm1
 <#
 .SYNOPSIS
     Provides common functions for the MD-WBS-Tools project.
@@ -64,7 +64,7 @@ function Get-DecodedAndMappedAttribute {
         5 { # Task
             $script:counters.Task++
             # ★ $script:currentLevelCounters を参照
-            $idL1 = "{0:D2}" -f $script:currentLevelCounters.L1
+            $idL1 = if ($script:currentLevelCounters.L1 -gt 0) { "{0:D2}" -f $script:currentLevelCounters.L1 } else { "00" }
             $idL2 = if ($script:currentLevelCounters.L2 -gt 0) { "{0:D2}" -f $script:currentLevelCounters.L2 } else { "00" }
             $idL3 = if ($script:currentLevelCounters.L3 -gt 0) { "{0:D2}" -f $script:currentLevelCounters.L3 } else { "00" }
             $idL4 = if ($script:currentLevelCounters.L4 -gt 0) { "{0:D2}" -f $script:currentLevelCounters.L4 } else { "00" }
@@ -82,24 +82,24 @@ function ConvertTo-AttributeObject {
     $decodedString = [System.Web.HttpUtility]::HtmlDecode($AttributeString)
     # Splitはするが、Trimは各値を取得する際に個別に行う
     $rawAttributes = $decodedString.Split(',')
-
+    
     # PSCustomObject を直接生成する
     # プロパティ名は、最終的にメインスクリプトの $item オブジェクトやCSVヘッダーと整合性が取れるように
     # simple-md-wbs 仕様書のフィールド名をベースに英語表記・キャメルケースなどを検討
     $itemObject = [PSCustomObject]@{
-        UserDefinedId            = "" # 1. ユーザー記述ID
-        StartDateInput           = "" # 2. 開始日（入力）
-        EndDateInput             = "" # 3. 終了日（入力）
-        DurationInput            = "" # 4. 日数（入力）
-        DependencyType           = "" # 5. 関連タスク種別
-        PredecessorUserDefinedId = "" # 6. 関連タスクID
-        ActualStartDate          = "" # 7. 開始日（実績）
-        ActualEndDate            = "" # 8. 終了日（実績）  ★NEW
-        Progress                 = "" # 9. 進捗率
-        Assignee                 = "" # 10. 担当者
-        Organization             = "" # 11. 担当組織
-        LastUpdatedDate          = "" # 12. 最終更新日    ★NEW (以前のStatusの位置から移動)
-        ItemComment              = "" # 13. コメント
+        UserDefinedId            = "" # 1
+        StartDateInput           = "" # 2
+        EndDateInput             = "" # 3
+        DurationInput            = "" # 4
+        DependencyType           = "" # 5
+        PredecessorUserDefinedId = "" # 6
+        ActualStartDate          = "" # 7
+        ActualEndDate            = "" # 8 (NEW)
+        Progress                 = "" # 9
+        Assignee                 = "" # 10
+        Organization             = "" # 11
+        LastUpdatedDate          = "" # 12 (NEW)
+        ItemComment              = "" # 13
     }
 
     # 各属性をインデックスに基づいて割り当て
@@ -109,33 +109,20 @@ function ConvertTo-AttributeObject {
     if ($rawAttributes.Count -gt 3)  { $itemObject.DurationInput = $rawAttributes[3].Trim() }
     if ($rawAttributes.Count -gt 4)  { $itemObject.DependencyType = $rawAttributes[4].Trim() }
     if ($rawAttributes.Count -gt 5)  { $itemObject.PredecessorUserDefinedId = $rawAttributes[5].Trim() }
-    if ($rawAttributes.Count -gt 6)  { $itemObject.ActualStartDate = $rawAttributes[6].Trim() }
-    if ($rawAttributes.Count -gt 7)  { $itemObject.ActualEndDate = $rawAttributes[7].Trim() }      # ★NEW
-    if ($rawAttributes.Count -gt 8)  { $itemObject.Progress = $rawAttributes[8].Trim() }
-    if ($rawAttributes.Count -gt 9)  { $itemObject.Assignee = $rawAttributes[9].Trim() }
-    if ($rawAttributes.Count -gt 10) { $itemObject.Organization    = $rawAttributes[10].Trim() }
+    if ($rawAttributes.Count -gt 6)  { $itemObject.ActualStartDate          = $rawAttributes[6].Trim() }
+    if ($rawAttributes.Count -gt 7)  { $itemObject.ActualEndDate            = $rawAttributes[7].Trim() }
+    if ($rawAttributes.Count -gt 8)  { $itemObject.Progress                 = $rawAttributes[8].Trim() }
+    if ($rawAttributes.Count -gt 9)  { $itemObject.Assignee                 = $rawAttributes[9].Trim() }
+    if ($rawAttributes.Count -gt 10) { $itemObject.Organization             = $rawAttributes[10].Trim() }
+    if ($rawAttributes.Count -gt 11) { $itemObject.LastUpdatedDate          = $rawAttributes[11].Trim() }
 
-    # 11. 最終更新日 (インデックス 11)
-    if ($rawAttributes.Count -gt 11) { $itemObject.LastUpdatedDate = $rawAttributes[11].Trim() }
-    else                             { $itemObject.LastUpdatedDate = "" }
-
-    # 12. コメント (インデックス 12 以降)
+    # コメントは13番目の要素 (インデックス12) 以降すべて
     if ($rawAttributes.Count -gt 12) {
         $itemObject.ItemComment = ($rawAttributes[12..($rawAttributes.Count - 1)] | ForEach-Object {$_.Trim()}) -join ','
     }
-    # elseif ($rawAttributes.Count -eq 12) { # 属性がちょうど13個の場合、コメントはインデックス12の要素
-    #    $itemObject.ItemComment = $rawAttributes[12].Trim()
-    # } # この elseif は上記の if ($rawAttributes.Count -gt 12) に包含されるので不要。
-      # Countが13の時、[12..12]となり、正しく動作する。
-    else { # 属性が12個以下の場合、コメントは空
-        $itemObject.ItemComment = ""
-    }
 
-    # ★ デバッグ出力 (テスト時のみ有効化)
-    Write-Host "AttributeString: [$AttributeString]"
-    Write-Host "rawAttributes.Count: $($rawAttributes.Count)"
-    Write-Host "LastUpdatedDate: $($itemObject.LastUpdatedDate)"
-    Write-Host "ItemComment: $($itemObject.ItemComment)"
+    # デバッグ表示は必要に応じてコメント解除
+    # Write-Host "AttributeString: [$AttributeString]"
     # $itemObject.PSObject.Properties | ForEach-Object { Write-Host "  $($_.Name) = '$($_.Value)'" }
 
     return $itemObject
