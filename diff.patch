@@ -1,0 +1,96 @@
+--- a/c:\Temp\MD-WBS-Tools\tests\powershell\MyCommonFunctions.Test.ps1
++++ b/c:\Temp\MD-WBS-Tools\tests\powershell\MyCommonFunctions.Test.ps1
+@@ -18,49 +18,53 @@
+     }
+ 
+     It "Should generate correct ID for Project (H1)" {
+-        Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "01.00.00.00"
++        Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "00.00.00.00"
+         # Calling H1 again should still return 00.00.00.00 and reset counters for sub-levels
+-        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null # Call some lower level to change counters
+-        Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "02.00.00.00" # Should reset and return project ID
++        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "00.00.00.00" 
+     }
+ 
+     It "Should generate correct ID for Category1 (H2)" {
+-        Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null # Establishes Project context (00.00.00.00)
+-        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "01.01.00.00"
+-        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "01.02.00.00" # Second H2 under the same project
++        Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "01.00.00.00"
++        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "02.00.00.00" 
+     }
+ 
+     It "Should return correct ID for first Category2 (H3) after Project and Category1" {
+         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null
+-        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null # -> 01.00.00.00
+-        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Should -Be "01.01.01.00"
+-        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Should -Be "01.01.02.00" # Second H3 under the first H2
++        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Should -Be "01.01.00.00"
++        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Should -Be "01.02.00.00" 
+     }
+ 
+     It "Should return correct ID for first Category3 (H4) after Project, Cat1, Cat2" {
+         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null
+-        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null # -> 01.00.00.00
+-        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null # -> 01.01.00.00
+-        Get-DecodedAndMappedAttribute -level 4 -itemType "Category3" | Should -Be "01.01.01.01"
+-        Get-DecodedAndMappedAttribute -level 4 -itemType "Category3" | Should -Be "01.01.01.02" # Second H4 under the first H3
++        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 4 -itemType "Category3" | Should -Be "01.01.01.00"
++        Get-DecodedAndMappedAttribute -level 4 -itemType "Category3" | Should -Be "01.01.02.00" 
+     }
+ 
+     It "Should return correct ID for first Task after Project, Cat1, Cat2, Cat3" {
+         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null
+-        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null # -> 01.00.00.00
+-        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null # -> 01.01.00.00
+-        Get-DecodedAndMappedAttribute -level 4 -itemType "Category3" | Out-Null # -> 01.01.01.00
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.01.01.01"
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.01.01.02" # Second Task under the first H4
++        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 4 -itemType "Category3" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.01.01"
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.01.02" 
+     }
+ 
+     # 連続呼び出しやカウンターリセットのテストも追加
+     It "Should return correct ID sequence for multiple categories and tasks" {
+         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "00.00.00.00"
+         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "01.00.00.00"
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.00.00.01" # Task under H2 (L3,L4 are "00")
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.00.00.02"
+-        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Should -Be "01.01.01.00" # New H3 under the first H2
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.01.00.01" # First Task under this new H3
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.00.00.01" 
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.00.00.02"
++        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Should -Be "01.01.00.00" 
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.01.00.01" 
+     }
+ 
+     It "Should reset lower level counters when switching to a higher or same level category" {
+-        Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Out-Null # 00.00.00.00
+-        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null # 01.00.00.00
+-        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null # 01.01.00.00
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Out-Null # 01.01.00.01
++        Get-DecodedAndMappedAttribute -level 1 -itemType "Project"   | Out-Null 
++        Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 3 -itemType "Category2" | Out-Null 
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task"      | Out-Null 
+ 
+         # 新しいCategory1 (H2) を開始 -> L3, L4, Taskカウンターがリセットされるはず
+         Get-DecodedAndMappedAttribute -level 2 -itemType "Category1" | Should -Be "02.00.00.00"
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "02.01.00.00.01" # First Task under this new H2
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "02.00.00.01" 
+ 
+         # 新しいProject (H1) を開始 -> L2, L3, L4, Taskカウンターがリセットされるはず
+         Get-DecodedAndMappedAttribute -level 1 -itemType "Project" | Should -Be "00.00.00.00"
+-        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "01.00.00.00.01" # First Task directly under new Project (L2,L3,L4 are "00")
++        Get-DecodedAndMappedAttribute -level 5 -itemType "Task" | Should -Be "00.00.00.01" 
+     }
+ }
+ 
