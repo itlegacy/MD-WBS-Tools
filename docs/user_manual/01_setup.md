@@ -30,6 +30,6 @@ MD-WBS-Toolsを利用するための環境設定について説明します。
 
 ## 1.4.（オプション）Excelテンプレートの準備
 
-* 出力されるCSVファイルは、汎用的なWBS/ガントチャートExcelテンプレート（`samples/excel_templates/wbs-gantt-template.xlsx`）での利用を想定しています。
+* 出力されるCSVファイルは、汎用的なWBS/ガントチャートExcelテンプレート（`samples/excel_templates/simple-markdown-wbs-gantt-template.xlsx`）での利用を想定しています。
 * このテンプレートを参考に、ご自身のExcel環境を準備するか、直接このテンプレートを利用してください。
 * とくに、日付計算を行う場合は、Excelの計算式をテンプレートに設定しておくと便利です（[Excelでの活用（`05_excel_integration.md`）]を参照）。

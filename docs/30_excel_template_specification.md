@@ -2,7 +2,7 @@
 
 ## 1. はじめに
 
-本仕様書は、MD-WBS-Toolsプロジェクトと連携して使用されるExcel WBS/ガントチャートテンプレート（`samples/excel_templates/wbs-gantt-template.xlsx` を想定）の構造、主要な列定義、入力ルール、および計算ロジックについて定義します。
+本仕様書は、MD-WBS-Toolsプロジェクトと連携して使用されるExcel WBS/ガントチャートテンプレート（`samples/excel_templates/simple-markdown-wbs-gantt-template.xlsx` を想定）の構造、主要な列定義、入力ルール、および計算ロジックについて定義します。
 PowerShellスクリプト（`Convert-SimpleMdWbsToCsv.ps1`）は、このテンプレート仕様に適合するCSVファイルを出力します。
 
 ## 2. テンプレート全体の構成と操作セル

@@ -4,7 +4,7 @@
 
 ## 5.1. 標準順序CSVのExcelへのインポート
 
-## 5.2. `wbs-gantt-template.xlsx` の利用（標準順序CSV向け）
+## 5.2. `simple-markdown-wbs-gantt-template.xlsx` の利用（標準順序CSV向け）
 
 ## 5.3. 日付計算式の埋め込み例（標準順序CSVに対して）
 
