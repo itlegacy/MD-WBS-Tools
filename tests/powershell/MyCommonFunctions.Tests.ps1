@@ -126,6 +126,99 @@ Describe "ConvertTo-AttributeObject Tests" {
     }
 }
 
+# ... (既存の ConvertTo-AttributeObject Tests の Describe ブロックの終了後) ...
+
+Describe "ConvertTo-SimpleMdWbsAttributeString Tests" {
+    It "Should convert a CsvRowItem with all properties to a correct attribute string" {
+        $csvRow = [PSCustomObject]@{
+            'ユーザー記述ID' = "TASK01"
+            '開始入力'     = "2025-01-01"
+            '終了入力'     = "2025-01-05"
+            '日数入力'     = "5"
+            '関連種別'     = "先行"
+            '先行タスクユーザー記述ID' = "PREV01" # CSVの列名に合わせる
+            '開始実績'     = "2025-01-02"
+            '修了実績'     = "2025-01-06" # CSVの列名に合わせる
+            '進捗実績'     = "50%"        # CSVの列名に合わせる
+            '担当者名'     = "山田太郎"
+            '担当組織'     = "開発部"
+            '最終更新'     = "2025-01-03"
+            'コメント'     = "これはテストコメントです"
+        }
+        $expectedString = "TASK01,2025-01-01,2025-01-05,5,先行,PREV01,2025-01-02,2025-01-06,50%,山田太郎,開発部,2025-01-03,これはテストコメントです"
+        ConvertTo-SimpleMdWbsAttributeString -CsvRowItem $csvRow | Should -Be $expectedString
+    }
+
+    It "Should handle a CsvRowItem with some missing properties (resulting in empty fields)" {
+        $csvRow = [PSCustomObject]@{
+            'ユーザー記述ID' = "TASK02"
+            '開始入力'     = "2025-02-01"
+            # '終了入力' は欠損
+            '日数入力'     = "3"
+            # '関連種別' は欠損
+            # '先行タスクユーザー記述ID' は欠損
+            '開始実績'     = "2025-02-02"
+            '修了実績'     = "" # 空文字で指定
+            '進捗実績'     = "10%"
+            '担当者名'     = "佐藤花子"
+            # '担当組織' は欠損
+            '最終更新'     = "2025-02-03"
+            'コメント'     = "一部欠損データ"
+        }
+        # 期待される文字列: 欠損プロパティは空のフィールドになる
+        $expectedString = "TASK02,2025-02-01,,3,,,2025-02-02,,10%,佐藤花子,,2025-02-03,一部欠損データ"
+        ConvertTo-SimpleMdWbsAttributeString -CsvRowItem $csvRow | Should -Be $expectedString
+    }
+
+    It "Should handle a CsvRowItem with only mandatory UserDefinedId" {
+        $csvRow = [PSCustomObject]@{
+            'ユーザー記述ID' = "TASK03"
+        }
+        $expectedString = "TASK03,,,,,,,,,,,," # 他の12フィールドは空
+        ConvertTo-SimpleMdWbsAttributeString -CsvRowItem $csvRow | Should -Be $expectedString
+    }
+
+    It "Should handle a CsvRowItem with a comment containing commas" {
+        $csvRow = [PSCustomObject]@{
+            'ユーザー記述ID' = "TASK04"
+            'コメント'     = "コメント,カンマ入り,です"
+        }
+        $expectedString = "TASK04,,,,,,,,,,,,コメント,カンマ入り,です"
+        ConvertTo-SimpleMdWbsAttributeString -CsvRowItem $csvRow | Should -Be $expectedString
+    }
+}
+
+# ... (ConvertTo-SimpleMdWbsAttributeString Tests の Describe ブロックの終了後) ...
+
+Describe "Get-SimpleMdWbsHierarchyPrefix Tests" {
+    It "Should return correct prefix for Project (Level 1)" {
+        Get-SimpleMdWbsHierarchyPrefix -HierarchyLevel 1 -ItemType "Project" | Should -Be "# "
+    }
+
+    It "Should return correct prefix for Category1 (Level 2)" {
+        Get-SimpleMdWbsHierarchyPrefix -HierarchyLevel 2 -ItemType "Category1" | Should -Be "## "
+    }
+
+    It "Should return correct prefix for Category2 (Level 3)" {
+        Get-SimpleMdWbsHierarchyPrefix -HierarchyLevel 3 -ItemType "Category2" | Should -Be "### "
+    }
+
+    It "Should return correct prefix for Category3 (Level 4)" {
+        Get-SimpleMdWbsHierarchyPrefix -HierarchyLevel 4 -ItemType "Category3" | Should -Be "#### "
+    }
+
+    It "Should return correct prefix for Task (Level 5)" {
+        Get-SimpleMdWbsHierarchyPrefix -HierarchyLevel 5 -ItemType "Task" | Should -Be "- "
+    }
+
+    It "Should return empty string and warning for invalid HierarchyLevel" {
+        # Write-Warning の出力をキャプチャして検証するのは少し複雑なので、
+        # ここでは戻り値が空であることと、エラーが発生しないこと（-ErrorAction Stop で止まらない）を確認する
+        # 実際の警告の確認は、手動実行やログで確認する形でも良い
+        Get-SimpleMdWbsHierarchyPrefix -HierarchyLevel 99 -ItemType "Task" -WarningAction SilentlyContinue | Should -Be ""
+    }
+}
+
 AfterAll {
     Remove-Module MyCommonFunctions -Force -ErrorAction SilentlyContinue
 }

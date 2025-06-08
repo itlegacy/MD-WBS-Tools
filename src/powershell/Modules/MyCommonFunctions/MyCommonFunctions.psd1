@@ -8,6 +8,8 @@
     FunctionsToExport = @(
         'Get-DecodedAndMappedAttribute',
         'ConvertTo-AttributeObject',
-        'Reset-WbsCounters'
+        'Reset-WbsCounters',
+        'ConvertTo-SimpleMdWbsAttributeString',
+        'Get-SimpleMdWbsHierarchyPrefix'
     )
 }

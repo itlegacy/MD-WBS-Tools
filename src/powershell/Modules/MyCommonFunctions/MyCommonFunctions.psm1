@@ -161,4 +161,91 @@ function Reset-WbsCounters {
     $script:currentLevelCounters.L4 = "00"
 }
 
-Export-ModuleMember -Function Get-DecodedAndMappedAttribute, ConvertTo-AttributeObject, Reset-WbsCounters
+# フェーズ 2
+
+function ConvertTo-SimpleMdWbsAttributeString {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [psobject]$CsvRowItem
+    )
+
+    Write-Verbose "ConvertTo-SimpleMdWbsAttributeString: Processing CsvRowItem with UserDefinedId '$($CsvRowItem.'ユーザー記述ID')'" # CSVの列名に合わせる
+
+    # simple-md-wbs 仕様書の13属性の順序で値を格納する配列を準備
+    # CSVの列名からsimple-md-wbsの属性へのマッピングが必要
+    # このマッピングは docs/10_requirements_definition.yaml の output_csv_columns.source_simplemdwbs を参照
+    # 例: $CsvRowItem.'ユーザー記述ID' はそのまま UserDefinedId になる
+    #     $CsvRowItem.'開始入力' はそのまま StartDateInput になる
+    #     $CsvRowItem.'担当者名' は Assignee になる
+    #     ...など
+
+    # 13属性の正しい順序で値を格納する配列
+    $attributeValues = New-Object string[] 13
+
+    # マッピング例 (docs/10_requirements_definition.yaml と docs/12_wbs_task_syntax_specification.md を参照して正確に定義)
+    # これはあくまで例であり、実際のCSV列名とsimple-md-wbs属性の対応を正確に行う必要があります。
+    # CSVの列名が存在しない場合は空文字列とする処理も必要。
+
+    # No.1: ユーザー記述ID
+    $attributeValues[0] = if ($CsvRowItem.PSObject.Properties.Name -contains 'ユーザー記述ID') { $CsvRowItem.'ユーザー記述ID' } else { "" }
+    # No.2: 開始日（入力）
+    $attributeValues[1] = if ($CsvRowItem.PSObject.Properties.Name -contains '開始入力') { $CsvRowItem.'開始入力' } else { "" }
+    # No.3: 終了日（入力）
+    $attributeValues[2] = if ($CsvRowItem.PSObject.Properties.Name -contains '終了入力') { $CsvRowItem.'終了入力' } else { "" }
+    # No.4: 日数（入力）
+    $attributeValues[3] = if ($CsvRowItem.PSObject.Properties.Name -contains '日数入力') { $CsvRowItem.'日数入力' } else { "" }
+    # No.5: 関連タスク種別
+    $attributeValues[4] = if ($CsvRowItem.PSObject.Properties.Name -contains '関連種別') { $CsvRowItem.'関連種別' } else { "" }
+    # No.6: 関連タスクID (CSVからは直接取得せず、依存関係解決の結果から設定されることが多いが、ここではCSVからの直接マッピングを仮定)
+    # CSVに「先行タスクユーザー記述ID」のような列があればそれを使う。なければ空。
+    $attributeValues[5] = if ($CsvRowItem.PSObject.Properties.Name -contains '先行タスクユーザー記述ID') { $CsvRowItem.'先行タスクユーザー記述ID' } else { "" } # 仮の列名
+    # No.7: 開始日（実績）
+    $attributeValues[6] = if ($CsvRowItem.PSObject.Properties.Name -contains '開始実績') { $CsvRowItem.'開始実績' } else { "" }
+    # No.8: 終了日（実績）
+    $attributeValues[7] = if ($CsvRowItem.PSObject.Properties.Name -contains '修了実績') { $CsvRowItem.'修了実績' } else { "" } # CSVの列名に注意
+    # No.9: 進捗率
+    $attributeValues[8] = if ($CsvRowItem.PSObject.Properties.Name -contains '進捗実績') { $CsvRowItem.'進捗実績' } else { "" } # CSVの列名に注意
+    # No.10: 担当者
+    $attributeValues[9] = if ($CsvRowItem.PSObject.Properties.Name -contains '担当者名') { $CsvRowItem.'担当者名' } else { "" }
+    # No.11: 担当組織
+    $attributeValues[10] = if ($CsvRowItem.PSObject.Properties.Name -contains '担当組織') { $CsvRowItem.'担当組織' } else { "" }
+    # No.12: 最終更新日
+    $attributeValues[11] = if ($CsvRowItem.PSObject.Properties.Name -contains '最終更新') { $CsvRowItem.'最終更新' } else { "" }
+    # No.13: コメント
+    $attributeValues[12] = if ($CsvRowItem.PSObject.Properties.Name -contains 'コメント') { $CsvRowItem.'コメント' } else { "" }
+
+    # 配列をカンマで結合して返す
+    $attributeString = $attributeValues -join ','
+    Write-Verbose "ConvertTo-SimpleMdWbsAttributeString: Generated attribute string: '$attributeString'"
+    return $attributeString
+}
+
+function Get-SimpleMdWbsHierarchyPrefix {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$HierarchyLevel, # 1:Project, 2:Category1(H2), 3:Category2(H3), 4:Category3(H4), 5:Task
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("Project", "Category1", "Category2", "Category3", "Task")]
+        [string]$ItemType
+    )
+
+    Write-Verbose "Get-SimpleMdWbsHierarchyPrefix: Level '$HierarchyLevel', ItemType '$ItemType'"
+    $prefix = ""
+    switch ($HierarchyLevel) {
+        1 { $prefix = "# " }       # Project (H1)
+        2 { $prefix = "## " }      # Category1 (H2)
+        3 { $prefix = "### " }     # Category3 (H3)
+        4 { $prefix = "#### " }    # Category4 (H4)
+        5 { $prefix = "- " }       # Task (List Item)
+        default {
+            Write-Warning "Get-SimpleMdWbsHierarchyPrefix: Invalid HierarchyLevel '$HierarchyLevel'. Returning empty prefix."
+        }
+    }
+    Write-Verbose "Get-SimpleMdWbsHierarchyPrefix: Returning prefix '$prefix'"
+    return $prefix
+}
+
+Export-ModuleMember -Function Get-DecodedAndMappedAttribute, ConvertTo-AttributeObject, Reset-WbsCounters, ConvertTo-SimpleMdWbsAttributeString, Get-SimpleMdWbsHierarchyPrefix
