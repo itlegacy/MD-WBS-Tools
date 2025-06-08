@@ -286,7 +286,7 @@ end {
         if (-not [string]::IsNullOrWhiteSpace($item.PredecessorUserDefinedId)) {
             # $wbsItemsの中から、UserDefinedIdが$item.PredecessorUserDefinedIdと一致する最初のアイテムを探す
             $predecessor = $script:wbsItems | Where-Object { $_.UserDefinedId -eq $item.PredecessorUserDefinedId } | Select-Object -First 1
-            
+
             if ($predecessor) {
                 # 見つかった先行タスクの情報を現在のアイテムに追加
                 $item | Add-Member -MemberType NoteProperty -Name "ResolvedPredecessorId" -Value $predecessor.DisplaySortKey
@@ -310,41 +310,17 @@ end {
     $csvOutput = $script:wbsItems | Select-Object -Property @(
         # @{Name="タスクID"; Expression={$_.DisplaySortKey}} # CSVヘッダーの1列目
         @{Name="タスクID"; Expression={
-            $id = $_.DisplaySortKey
-            $parts = $id.Split('.')
-            $outputParts = [System.Collections.Generic.List[string]]::new()
-
-            if ($_.HierarchyLevel -eq 1) { # Project H1: "P"
-                # Sort ID is 00.00.00.00. Display as "0"
-                $outputParts.Add("0") 
-            } elseif ($_.HierarchyLevel -eq 2) { # Category1 H2: "C1"
-                # Sort ID is L2.00.00.00 (e.g., 01.00.00.00)
-                $outputParts.Add([int]$parts[0]) # Category1 number (L2)
-            } elseif ($_.HierarchyLevel -eq 3) { # Category2 H3: "C1.C2"
-                # Sort ID is L2.L3.00.00 (e.g., 01.02.00.00)
-                $outputParts.Add([int]$parts[0]) # Category1 number (L2)
-                $outputParts.Add([int]$parts[1]) # Category2 number (L3)
-            } elseif ($_.HierarchyLevel -eq 4) { # Category3 H4: "C1.C2.C3"
-                # Sort ID is L2.L3.L4.00 (e.g., 01.02.03.00)
-                $outputParts.Add([int]$parts[0]) # Category1 number (L2)
-                $outputParts.Add([int]$parts[1]) # Category2 number (L3)
-                $outputParts.Add([int]$parts[2]) # Category3 number (L4)
-            } elseif ($_.HierarchyLevel -eq 5) { # Task: "C1.C2.C3.T" (4 segments)
-                # Sort ID is L2.L3.L4.TaskSeq (e.g., 01.02.03.04)
-                if ($parts.Count -ge 4) { # Expecting 4 parts for task's sort ID
-                    $outputParts.Add([int]$parts[0]) # Cat1 number (L2)
-                    $outputParts.Add([int]$parts[1]) # Cat2 number (L3)
-                    $outputParts.Add([int]$parts[2]) # Cat3 number (L4)
-                    $outputParts.Add([int]$parts[3]) # Task Sequence number
-                } else {
-                    # Fallback for unexpected DisplaySortKey format for a task
-                    Write-Warning "Task item '$($_.TaskName)' (UserDefinedId: '$($_.UserDefinedId)') has an unexpected DisplaySortKey format: '$id'. Falling back to full key for タスクID."
-                    return $id 
-                }
-            }
-            $outputParts -join '.'
+            # 仕様書3.0で定義された「表示用タスクID」を生成
+            $sortId = $_.DisplaySortKey
+            $parts = $sortId.Split('.') # 変数名を $id から $sortId に修正
+            $outputParts = @()
+            if ($_.HierarchyLevel -ge 2) { $outputParts += [int]$parts[0] } # 大分類
+            if ($_.HierarchyLevel -ge 3) { $outputParts += [int]$parts[1] } # 中分類
+            if ($_.HierarchyLevel -ge 4) { $outputParts += [int]$parts[2] } # 小分類
+            if ($_.HierarchyLevel -ge 5) { $outputParts += [int]$parts[3] } # タスク
+            if ($outputParts.Count -eq 0) { "0" } else { $outputParts -join '.' }
         }}
-        @{Name="番号"; Expression={$_.DisplaySortKey}} # This remains the sortable, zero-padded ID
+        @{Name="番号"; Expression={$_.DisplaySortKey}}
         @{Name="大分類"; Expression={ if ($_.HierarchyLevel -eq 2) { $_.Category2Name } else { "" } }}
         @{Name="中分類"; Expression={ if ($_.HierarchyLevel -eq 3) { $_.Category3Name } else { "" } }}
         @{Name="小分類"; Expression={ if ($_.HierarchyLevel -eq 4) { $_.Category4Name } else { "" } }}
@@ -354,32 +330,31 @@ end {
             else { $_.TaskName }
         }}
         @{Name="関連種別"; Expression={$_.DependencyType}}
-        @{Name="関連番号"; Expression={$_.ResolvedPredecessorId}} # 依存関係解決後に設定されるプロパティ
-        @{Name="関連タスクアイテム"; Expression={$_.ResolvedPredecessorName}} # 依存関係解決後に設定されるプロパティ
-        @{Name="関連有無"; Expression={""}} # Excelテンプレートでは式が埋め込まれているため、CSVでは空文字
+        @{Name="関連番号"; Expression={$_.ResolvedPredecessorId}}
+        @{Name="関連タスクアイテム"; Expression={$_.ResolvedPredecessorName}}
+        @{Name="関連有無"; Expression={""}} # Excel数式用
         @{Name="コメント"; Expression={$_.ItemComment}}
-        @{Name="進捗日数"; Expression={""}} # Excel数式
-        @{Name="作業遅延"; Expression={""}} # Excel数式
-        @{Name="開始遅延"; Expression={""}} # Excel数式
-        @{Name="遅延日数"; Expression={""}} # Excel数式
-        @{Name="担当組織"; Expression={$_.Organization}} # simple-md-wbs属性 No.11
-        @{Name="担当者名"; Expression={$_.Assignee}}     # simple-md-wbs属性 No.10
-        @{Name="フラグ"; Expression={""}} # ユーザー定義
-        @{Name="最終更新"; Expression={$_.LastUpdatedDate}} # simple-md-wbs属性 No.12
+        @{Name="進捗日数"; Expression={""}} # Excel数式用
+        @{Name="作業遅延"; Expression={""}} # Excel数式用
+        @{Name="開始遅延"; Expression={""}} # Excel数式用
+        @{Name="遅延日数"; Expression={""}} # Excel数式用
+        @{Name="担当組織"; Expression={$_.Organization}}
+        @{Name="担当者名"; Expression={$_.Assignee}}
+        @{Name="フラグ"; Expression={""}} # Excelユーザー定義用
+        @{Name="最終更新"; Expression={$_.LastUpdatedDate}}
         @{Name="開始入力"; Expression={$_.StartDateInput}}
         @{Name="終了入力"; Expression={$_.EndDateInput}}
         @{Name="日数入力"; Expression={$_.DurationInput}}
-        @{Name="開始計画"; Expression={""}} # Excel数式
-        @{Name="終了計画"; Expression={""}} # Excel数式
-        @{Name="日数計画"; Expression={""}} # Excel数式
-        @{Name="進捗実績"; Expression={$_.Progress}}         # simple-md-wbs属性 No.9
-        @{Name="開始実績"; Expression={$_.ActualStartDate}}  # simple-md-wbs属性 No.7
-        @{Name="修了実績"; Expression={$_.ActualEndDate}}    # simple-md-wbs属性 No.8
-        @{Name="_emptyColumn1_"; Expression={""}} # Placeholder for the 1st empty column after 修了実績
-        @{Name="_emptyColumn2_"; Expression={""}} # Placeholder for the 2nd empty column after 修了実績
-        @{Name="_emptyColumn3_"; Expression={""}} # Placeholder for the 3rd empty column after 修了実績
-        @{Name="開始入力は平日？"; Expression={""}} # ツールは空欄を出力/Excel側利用
-        @{Name="終了入力は平日？"; Expression={""}} # ツールは空欄を出力/Excel側利用
+        @{Name="開始計画"; Expression={""}} # Excel数式用
+        @{Name="終了計画"; Expression={""}} # Excel数式用
+        @{Name="日数計画"; Expression={""}} # Excel数式用
+        @{Name="進捗実績"; Expression={$_.Progress}}
+        @{Name="開始実績"; Expression={$_.ActualStartDate}}
+        @{Name="修了実績"; Expression={$_.ActualEndDate}}
+        @{Name="_emptyColumn28_"; Expression={""}} # 28番目の空列 (一時的なユニーク名)
+        @{Name="_emptyColumn29_"; Expression={""}} # 29番目の空列 (一時的なユニーク名)
+        @{Name="開始入力は平日？"; Expression={""}} # Excel数式用
+        @{Name="終了入力は平日？"; Expression={""}} # Excel数式用
         # --- 以下はデバッグ用。最終的なCSV仕様に含まれない場合は削除またはコメントアウト ---
         # @{Name="ユーザー記述ID_元"; Expression={$_.UserDefinedId}}
         # @{Name="アイテム種別_デバッグ用"; Expression={$_.ItemType}}
