@@ -71,6 +71,23 @@ function ConvertTo-AttributeObject {
     [CmdletBinding()] # -Verbose を使えるようにする
     param ([string]$AttributeString)
 
+    # --- ここからデバッグコード ---
+    Write-Host "Debug: Inside ConvertTo-SimpleMdWbsAttributeString" -ForegroundColor Yellow
+    Write-Host "  CsvRowItem object type: $($CsvRowItem.GetType().FullName)" -ForegroundColor Yellow
+    Write-Host "  CsvRowItem properties (PSObject.Properties):" -ForegroundColor Yellow
+    $CsvRowItem.PSObject.Properties | ForEach-Object {
+        Write-Host "    Name: '$($_.Name)', Value: '$($_.Value)', TypeNameOfValue: '$($_.TypeNameOfValue)'" -ForegroundColor Cyan
+    }
+
+    $propertyNameToCheck = 'ユーザー記述ID'
+    if ($CsvRowItem.PSObject.Properties[$propertyNameToCheck]) {
+        Write-Host "  Property '$propertyNameToCheck' FOUND. Value: '$($CsvRowItem.$propertyNameToCheck)'" -ForegroundColor Green
+    } else {
+        Write-Host "  Property '$propertyNameToCheck' NOT FOUND on CsvRowItem." -ForegroundColor Red
+        Write-Warning "  Property '$propertyNameToCheck' was not found on the CsvRowItem object passed to ConvertTo-SimpleMdWbsAttributeString."
+    }
+    # --- デバッグコードここまで ---
+
     Write-Verbose "ConvertTo-AttributeObject: Received AttributeString: '$AttributeString'"
 
     if ([string]::IsNullOrWhiteSpace($AttributeString)) {

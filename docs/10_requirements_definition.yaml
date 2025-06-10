@@ -218,6 +218,10 @@ non_functional_requirements:
     - id: "MAINT-SCRIPT-READABLE"
       name: "スクリプトの保守性・可読性"
       details: "PowerShellスクリプトは、コメント、適切な命名規則、関数分割（MyCommonFunctionsモジュール活用）により可読性が高く、修正・拡張が比較的容易であること。"
+  development_process_integrity:
+    - id: "DEVP-INTEGRITY"
+      name: "開発プロセスの健全性"
+      details: "開発は、docs/99_ai_collaboration_guideline.md で定められた『AI協業ガイドライン』に準拠し、対話的かつ検証可能なプロセスを通じて行われること。"
   # ...（他の非機能要件は必要に応じて維持・更新）
 
 constraints_and_assumptions:

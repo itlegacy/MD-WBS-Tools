@@ -65,47 +65,59 @@ begin {
     Write-Verbose "Initialization complete."
 }
 
+# <----- ここからコピー -----
 process {
-    Write-Verbose "Processing CSV file: $InputCsvPath"
     try {
-        # CSVファイルの読み込み
-        # Import-Csv はヘッダー行をプロパティ名として使用する
-        # エンコーディングはUTF-8を想定 (必要に応じて -Encoding を指定)
-        $wbsItemsFromCsv = Import-Csv -Path $InputCsvPath -Encoding UTF8 # UTF8を明示
-        Write-Verbose "Successfully imported $($wbsItemsFromCsv.Count) items from CSV."
-
-        if ($wbsItemsFromCsv.Count -eq 0) {
-            Write-Warning "CSVファイルが空か、ヘッダーのみでした。処理をスキップします。"
-            return # processブロックを抜ける
+        # --- ステップ1 & 2: データ前処理とカスタムソート（完成済み）---
+        $lines = Get-Content -Path $InputCsvPath -Encoding UTF8
+        $headerLine = $lines[4]; if ($headerLine.StartsWith([char]0xFEFF)) { $headerLine = $headerLine.Substring(1) }
+        $headers = $headerLine.Split(',') | ForEach-Object { $_.Trim().Replace('"', '') }
+        $items = foreach ($line in $lines[5..($lines.Count - 1)]) {
+            if ([string]::IsNullOrWhiteSpace($line) -or ($line -replace ',', '').Trim() -eq '') { continue }
+            $values = $line.Split(','); $propHash = [ordered]@{}; for ($i = 0; $i -lt $headers.Length; $i++) { if (-not [string]::IsNullOrWhiteSpace($headers[$i])) { $propHash[$headers[$i]] = if ($i -lt $values.Length) { $values[$i].Trim().Replace('"', '') } else { "" } } }; [PSCustomObject]$propHash
         }
+        $sortedItems = @($items | Where-Object { $_.PSObject.Properties['番号'] -and -not [string]::IsNullOrWhiteSpace($_.'番号') } | Sort-Object -Property @{ Expression = { ($_.PSObject.Properties['番号'].Value.Split('.') | ForEach-Object { if ($_ -eq 'z') { '_' } else { "{0:D3}" -f ([int]$_) } }) -join '.' } })
+        
+        # --- ステップ3: Markdown生成処理（最終完成版 Ver.1.2：可読性向上） ---
+        $projectName = ($lines[0].Split(','))[4].Trim().Replace('"', '')
+        $markdownOutputLines.Add("# $projectName")
 
-        # ここに階層復元とMarkdownテキスト生成の主要ロジックが入る
-        # ForEach-Object ($item in $wbsItemsFromCsv) { ... } のようなループ処理
-        #   - $item.'番号' を解析して階層レベルを判断
-        #   - 前のアイテムと比較して見出しやインデントを調整
-        #   - $item の各プロパティから属性文字列を生成 (MyCommonFunctionsのヘルパー関数利用検討)
-        #   - $markdownOutputLines.Add("...") で生成した行を追加
+        foreach ($item in $sortedItems) {
+            $adapterObject = [PSCustomObject]@{ 'ユーザー記述ID'='';'開始入力'=if($item.'開始入力'){$item.'開始入力'}else{''};'終了入力'=if($item.'終了入力'){$item.'終了入力'}else{''};'日数入力'=if($item.'日数入力'){$item.'日数入力'}else{''};'関連種別'=if($item.'関連種別'){$item.'関連種別'}else{''};'先行タスクユーザー記述ID'=if($item.'関連番号'){$item.'関連番号'}else{''};'開始実績'=if($item.'開始実績'){$item.'開始実績'}else{''};'修了実績'=if($item.'修了実績'){$item.'修了実績'}else{''};'進捗実績'=if($item.'進捗実績'){$item.'進捗実績'}else{''};'担当者名'=if($item.'担当者名'){$item.'担当者名'}else{''};'担当組織'=if($item.'担当組織'){$item.'担当組織'}else{''};'最終更新'=if($item.'最終更新'){$item.'最終更新'}else{''};'コメント'=if($item.'コメント'){$item.'コメント'}else{''} }
+            $attributeString = ConvertTo-SimpleMdWbsAttributeString -CsvRowItem $adapterObject
+            $isAttributeEmpty = ($attributeString -replace '[,\s]', '').Length -eq 0
 
-        # (仮のプレースホルダーロジック)
-        $markdownOutputLines.Add("# WBS Title (Generated from CSV)")
-        $markdownOutputLines.Add("")
-        foreach ($item in $wbsItemsFromCsv) {
-            # 簡単な例として、タスクアイテム名と番号だけを出力
-            $markdownOutputLines.Add("- $($item.'タスクアイテム') (ID: $($item.'番号'))")
+            # --- あなたのロジック + 可読性向上のための改行制御 ---
+            if (-not [string]::IsNullOrWhiteSpace($item.'大分類')) {
+                $markdownOutputLines.Add(""); $markdownOutputLines.Add("## $($item.'大分類')")
+                if (-not $isAttributeEmpty) { $markdownOutputLines.Add("%% $attributeString") }
+                $markdownOutputLines.Add("")
+            } 
+            elseif (-not [string]::IsNullOrWhiteSpace($item.'中分類')) {
+                $markdownOutputLines.Add(""); $markdownOutputLines.Add("### $($item.'中分類')")
+                if (-not $isAttributeEmpty) { $markdownOutputLines.Add("%% $attributeString") }
+                $markdownOutputLines.Add("")
+            } 
+            elseif (-not [string]::IsNullOrWhiteSpace($item.'小分類')) {
+                $markdownOutputLines.Add(""); $markdownOutputLines.Add("#### $($item.'小分類')")
+                $markdownOutputLines.Add("")
+                
+                $taskLine = "- $($item.'小分類')"
+                if (-not $isAttributeEmpty) { $taskLine += " <!-- $attributeString -->" }
+                $markdownOutputLines.Add($taskLine)
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($item.'タスクアイテム')) {
+                $taskLine = "- $($item.'タスクアイテム')"
+                if (-not $isAttributeEmpty) { $taskLine += " <!-- $attributeString -->" }
+                $markdownOutputLines.Add($taskLine)
+            }
         }
-        # (仮のプレースホルダーロジックここまで)
-
-        Write-Verbose "Markdown content generation logic completed (placeholder)."
-
     }
     catch {
-        Write-Error "CSVファイルの処理中にエラーが発生しました: $($_.Exception.Message)"
-        Write-Error "スタックトレース: $($_.ScriptStackTrace)"
-        # エラー発生時は end ブロックに進まずに終了させるか、フラグで制御
-        # ここでは、致命的なエラーとして処理を中断する想定
-        exit 1 # または throw
+        Write-Error "An error occurred: $($_.Exception.Message)"
     }
 }
+# <----- ここまでコピー -----
 
 end {
     Write-Verbose "Finalizing script and generating output file: $OutputMdPath"
