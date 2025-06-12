@@ -1,4 +1,3 @@
-# Convert-CsvToSimpleMdWbs.ps1
 <#
 .SYNOPSIS
     標準順序のCSVファイルをsimple-md-wbs形式のMarkdownファイルに変換します。
@@ -20,8 +19,10 @@
     CSVの入力仕様については、docs/10_requirements_definition.yaml を参照してください。
     階層復元はCSVの「番号」列に依存します。
 #>
-[CmdletBinding()] # この行より前に何らかの意味のあるコードがあると、Unexpected attribute 'CmdletBinding'.となる：コーディング規則にいれる
+# using module は、他のどのコードよりも先に、スクリプトの先頭に記述する必要があります
+using module ".\Modules\MyCommonFunctions\MyCommonFunctions.psm1"
 
+[CmdletBinding()]
 param (
     [Parameter(Mandatory = $true, HelpMessage = "入力する標準順序CSVファイルのパス。ファイルが存在する必要があります。")]
     [ValidateScript({
@@ -46,17 +47,10 @@ begin {
     Write-Verbose "Input CSV Path: $InputCsvPath"
     Write-Verbose "Output Markdown Path: $OutputMdPath"
 
-    # 必要なモジュールのインポート (もしあれば)
-    try {
-        # $PSScriptRoot からの相対パスでモジュールマニフェストのフルパスを構築
-        $commonModulePath = Join-Path $PSScriptRoot "Modules/MyCommonFunctions/MyCommonFunctions.psd1"
-        Import-Module -Name $commonModulePath -Force -ErrorAction Stop
-        Write-Verbose "Successfully imported MyCommonFunctions module from: $commonModulePath"
-    }
-    catch {
-        Write-Error "必要なモジュール MyCommonFunctions のインポートに失敗しました: $($_.Exception.Message)"
-        exit 1
-    }
+    # Import-Module は不要になるため、begin ブロックから削除またはコメントアウトします
+    # try { ... Import-Module ... } catch { ... } のブロックを削除
+    Write-Verbose "Initialization complete. Module is loaded via 'using module'."
+
 
     # 結果を格納する変数などの初期化
     $wbsItemsFromCsv = @()
@@ -65,59 +59,72 @@ begin {
     Write-Verbose "Initialization complete."
 }
 
-# <----- ここからコピー -----
 process {
     try {
-        # --- ステップ1 & 2: データ前処理とカスタムソート（完成済み）---
-        $lines = Get-Content -Path $InputCsvPath -Encoding UTF8
-        $headerLine = $lines[4]; if ($headerLine.StartsWith([char]0xFEFF)) { $headerLine = $headerLine.Substring(1) }
-        $headers = $headerLine.Split(',') | ForEach-Object { $_.Trim().Replace('"', '') }
-        $items = foreach ($line in $lines[5..($lines.Count - 1)]) {
-            if ([string]::IsNullOrWhiteSpace($line) -or ($line -replace ',', '').Trim() -eq '') { continue }
-            $values = $line.Split(','); $propHash = [ordered]@{}; for ($i = 0; $i -lt $headers.Length; $i++) { if (-not [string]::IsNullOrWhiteSpace($headers[$i])) { $propHash[$headers[$i]] = if ($i -lt $values.Length) { $values[$i].Trim().Replace('"', '') } else { "" } } }; [PSCustomObject]$propHash
-        }
-        $sortedItems = @($items | Where-Object { $_.PSObject.Properties['番号'] -and -not [string]::IsNullOrWhiteSpace($_.'番号') } | Sort-Object -Property @{ Expression = { ($_.PSObject.Properties['番号'].Value.Split('.') | ForEach-Object { if ($_ -eq 'z') { '_' } else { "{0:D3}" -f ([int]$_) } }) -join '.' } })
+        Write-Verbose "Reading and parsing CSV file: $InputCsvPath"
+        $wbsItemsFromCsv = Import-Csv -Path $InputCsvPath -Encoding UTF8
         
-        # --- ステップ3: Markdown生成処理（最終完成版 Ver.1.2：可読性向上） ---
-        $projectName = ($lines[0].Split(','))[4].Trim().Replace('"', '')
-        $markdownOutputLines.Add("# $projectName")
+        if ($null -eq $wbsItemsFromCsv -or $wbsItemsFromCsv.Count -eq 0) {
+            Write-Warning "CSV file is empty or contains no data rows."
+            return
+        }
 
-        foreach ($item in $sortedItems) {
-            $adapterObject = [PSCustomObject]@{ 'ユーザー記述ID'='';'開始入力'=if($item.'開始入力'){$item.'開始入力'}else{''};'終了入力'=if($item.'終了入力'){$item.'終了入力'}else{''};'日数入力'=if($item.'日数入力'){$item.'日数入力'}else{''};'関連種別'=if($item.'関連種別'){$item.'関連種別'}else{''};'先行タスクユーザー記述ID'=if($item.'関連番号'){$item.'関連番号'}else{''};'開始実績'=if($item.'開始実績'){$item.'開始実績'}else{''};'修了実績'=if($item.'修了実績'){$item.'修了実績'}else{''};'進捗実績'=if($item.'進捗実績'){$item.'進捗実績'}else{''};'担当者名'=if($item.'担当者名'){$item.'担当者名'}else{''};'担当組織'=if($item.'担当組織'){$item.'担当組織'}else{''};'最終更新'=if($item.'最終更新'){$item.'最終更新'}else{''};'コメント'=if($item.'コメント'){$item.'コメント'}else{''} }
-            $attributeString = ConvertTo-SimpleMdWbsAttributeString -CsvRowItem $adapterObject
+        Write-Verbose "Generating Markdown content based on the 'visual' rule..."
+
+        $isFirstLine = $true
+        foreach ($item in $wbsItemsFromCsv) {
+            
+            $attributeString = ConvertTo-SimpleMdWbsAttributeString -CsvRowItem $item
             $isAttributeEmpty = ($attributeString -replace '[,\s]', '').Length -eq 0
 
-            # --- あなたのロジック + 可読性向上のための改行制御 ---
-            if (-not [string]::IsNullOrWhiteSpace($item.'大分類')) {
-                $markdownOutputLines.Add(""); $markdownOutputLines.Add("## $($item.'大分類')")
+            if (-not [string]::IsNullOrEmpty($item.'大分類')) {
+                # [要求3] 最初の行でなければ、見出しの前に空行を1つだけ挿入
+                if (-not $isFirstLine) {
+                    $markdownOutputLines.Add("")
+                }
+                $markdownOutputLines.Add("## $($item.'大分類')")
                 if (-not $isAttributeEmpty) { $markdownOutputLines.Add("%% $attributeString") }
-                $markdownOutputLines.Add("")
             } 
-            elseif (-not [string]::IsNullOrWhiteSpace($item.'中分類')) {
-                $markdownOutputLines.Add(""); $markdownOutputLines.Add("### $($item.'中分類')")
+            elseif (-not [string]::IsNullOrEmpty($item.'中分類')) {
+                # [要求3] 最初の行でなければ、見出しの前に空行を1つだけ挿入
+                if (-not $isFirstLine) {
+                    $markdownOutputLines.Add("")
+                }
+                $markdownOutputLines.Add("### $($item.'中分類')")
                 if (-not $isAttributeEmpty) { $markdownOutputLines.Add("%% $attributeString") }
-                $markdownOutputLines.Add("")
             } 
-            elseif (-not [string]::IsNullOrWhiteSpace($item.'小分類')) {
-                $markdownOutputLines.Add(""); $markdownOutputLines.Add("#### $($item.'小分類')")
-                $markdownOutputLines.Add("")
-                
-                $taskLine = "- $($item.'小分類')"
-                if (-not $isAttributeEmpty) { $taskLine += " <!-- $attributeString -->" }
-                $markdownOutputLines.Add($taskLine)
+            elseif (-not [string]::IsNullOrEmpty($item.'小分類')) {
+                # [要求3] 最初の行でなければ、見出しの前に空行を1つだけ挿入
+                if (-not $isFirstLine) {
+                    $markdownOutputLines.Add("")
+                }
+                $markdownOutputLines.Add("#### $($item.'小分類')")
+                if (-not $isAttributeEmpty) { $markdownOutputLines.Add("%% $attributeString") }
             }
-            elseif (-not [string]::IsNullOrWhiteSpace($item.'タスクアイテム')) {
-                $taskLine = "- $($item.'タスクアイテム')"
-                if (-not $isAttributeEmpty) { $taskLine += " <!-- $attributeString -->" }
-                $markdownOutputLines.Add($taskLine)
+            elseif (-not [string]::IsNullOrEmpty($item.'タスクアイテム')) {
+                if ($item.番号.EndsWith("00.00.00")) { # 番号が .00.00.00 で終わるならH1
+                    # [要求3] 最初の行でなければ、見出しの前に空行を1つだけ挿入
+                    if (-not $isFirstLine) {
+                        $markdownOutputLines.Add("")
+                    }
+                    $markdownOutputLines.Add("# $($item.'タスクアイテム')")
+                    if (-not $isAttributeEmpty) { $markdownOutputLines.Add("%% $attributeString") }
+                } else { # 通常のタスク
+                    # [要求1 & 2] インデントを削除し、属性をHTMLコメントで囲む
+                    $taskLine = "- $($item.'タスクアイテム')"
+                    if (-not $isAttributeEmpty) { $taskLine += " <!-- $attributeString -->" }
+                    $markdownOutputLines.Add($taskLine)
+                }
             }
+            
+            $isFirstLine = $false
         }
     }
     catch {
-        Write-Error "An error occurred: $($_.Exception.Message)"
+        Write-Error "An error occurred during main processing: $($_.Exception.Message)"
+        Write-Verbose "ERROR: $($_.Exception.Message) at $($_.InvocationInfo.ScriptName):$($_.InvocationInfo.ScriptLineNumber)"
     }
 }
-# <----- ここまでコピー -----
 
 end {
     Write-Verbose "Finalizing script and generating output file: $OutputMdPath"

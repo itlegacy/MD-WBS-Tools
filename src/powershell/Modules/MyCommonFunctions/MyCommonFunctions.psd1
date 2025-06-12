@@ -1,4 +1,4 @@
-﻿# MyCommonFunctions.psd1
+# MyCommonFunctions.psd1
 @{
     RootModule = 'MyCommonFunctions.psm1'
     ModuleVersion = '0.1.0'
@@ -6,6 +6,10 @@
     Author = 'IT Legacy'
     Description = 'Provides common functions for the MD-WBS-Tools project.'
     FunctionsToExport = @(
+        'Reset-InternalWbsCounters',
+        'Update-InternalWbsCounters',
+        'Get-NextInternalSystemId',
+        'Get-NextInternalHierarchicalId',
         'Get-DecodedAndMappedAttribute',
         'ConvertTo-AttributeObject',
         'Reset-WbsCounters',

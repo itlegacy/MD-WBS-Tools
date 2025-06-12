@@ -1,4 +1,4 @@
-﻿Set-StrictMode -Version Latest
+Set-StrictMode -Version Latest
 # MyCommonFunctions.psm1
 <#
 .SYNOPSIS
@@ -21,6 +21,72 @@ $script:currentLevelCounters = @{
     L2 = 0
     L3 = 0
     L4 = 0
+}
+
+# =============================================================================
+# 内部クラス定義と関数定義 (スクリプトの先頭に移動)
+# =============================================================================
+
+# --- 内部クラス定義 ---
+# WBSの各アイテムの情報をメモリ内で保持するためのクラス
+class WbsElementNode {
+    [int]$HierarchyLevel
+    [string]$ItemText
+    [string[]]$Attributes
+    [string]$UserDefinedId
+    [string]$PredecessorUserDefinedId
+    [string]$SystemId
+    [string]$HierarchicalId
+    [string]$ResolvedPredecessorSystemId
+    [bool]$IsTask
+}
+
+# --- 内部関数定義 ---
+# スクリプト内で閉じたカウンター管理
+$script:InternalWbsCounters = @{ L1 = 0; L2 = 0; L3 = 0; L4 = 0; Task = 0 }
+
+function Reset-InternalWbsCounters {
+    $script:InternalWbsCounters = @{ L1 = 0; L2 = 0; L3 = 0; L4 = 0; Task = 0 }
+}
+
+function Update-InternalWbsCounters {
+    param([int]$Level)
+    for ($i = $Level + 1; $i -le 4; $i++) { $script:InternalWbsCounters["L$i"] = 0 }
+    $script:InternalWbsCounters.Task = 0
+    if ($Level -ge 1 -and $Level -le 4) { $script:InternalWbsCounters["L$Level"]++ }
+}
+
+function Get-NextInternalSystemId {
+    param([int]$Level, [bool]$IsTask)
+    $parts = @()
+    for ($i = 1; $i -le $Level; $i++) { $parts += $script:InternalWbsCounters["L$i"] }
+    if ($IsTask) {
+        $script:InternalWbsCounters.Task++
+        $parts += $script:InternalWbsCounters.Task
+    }
+    return $parts -join '.'
+}
+
+function Get-NextInternalHierarchicalId {
+    param([int]$Level, [bool]$IsTask)
+    $l1 = "{0:D2}" -f $script:InternalWbsCounters.L1
+    $l2 = "{0:D2}" -f $script:InternalWbsCounters.L2
+    $l3 = "{0:D2}" -f $script:InternalWbsCounters.L3
+    if ($IsTask) {
+        $taskNum = "{0:D2}" -f $script:InternalWbsCounters.Task
+        return "$l1.$l2.$l3.$taskNum"
+    } else {
+        switch ($Level) {
+            1 { return "$l1.00.00.00" }
+            2 { return "$l1.$l2.00.00" }
+            3 { return "$l1.$l2.$l3.00" }
+            4 { return "$l1.$l2.$l3.00" } # H4の階層IDはL3と同じ暫定仕様 (docs/12_wbs_task_syntax_specification.md にH4の明確な階層ID仕様がないため)
+            default {
+                Write-Warning "Get-NextInternalHierarchicalId: Unexpected Level '$Level' for a non-task item. Returning '00.00.00.00'."
+                return "00.00.00.00"
+            }
+        }
+    }
 }
 
 function Get-DecodedAndMappedAttribute {
@@ -187,7 +253,7 @@ function ConvertTo-SimpleMdWbsAttributeString {
         [psobject]$CsvRowItem
     )
 
-    Write-Verbose "ConvertTo-SimpleMdWbsAttributeString: Processing CsvRowItem with UserDefinedId '$($CsvRowItem.'ユーザー記述ID')'" # CSVの列名に合わせる
+    Write-Verbose "ConvertTo-SimpleMdWbsAttributeString: Processing CsvRowItem with UserDefinedId '$($CsvRowItem.'タスクID')'"
 
     # simple-md-wbs 仕様書の13属性の順序で値を格納する配列を準備
     # CSVの列名からsimple-md-wbsの属性へのマッピングが必要
@@ -201,11 +267,10 @@ function ConvertTo-SimpleMdWbsAttributeString {
     $attributeValues = New-Object string[] 13
 
     # マッピング例 (docs/10_requirements_definition.yaml と docs/12_wbs_task_syntax_specification.md を参照して正確に定義)
-    # これはあくまで例であり、実際のCSV列名とsimple-md-wbs属性の対応を正確に行う必要があります。
     # CSVの列名が存在しない場合は空文字列とする処理も必要。
 
     # No.1: ユーザー記述ID
-    $attributeValues[0] = if ($CsvRowItem.PSObject.Properties.Name -contains 'ユーザー記述ID') { $CsvRowItem.'ユーザー記述ID' } else { "" }
+    $attributeValues[0] = if ($CsvRowItem.PSObject.Properties.Name -contains 'タスクID') { $CsvRowItem.'タスクID' } else { "" }
     # No.2: 開始日（入力）
     $attributeValues[1] = if ($CsvRowItem.PSObject.Properties.Name -contains '開始入力') { $CsvRowItem.'開始入力' } else { "" }
     # No.3: 終了日（入力）
@@ -214,15 +279,14 @@ function ConvertTo-SimpleMdWbsAttributeString {
     $attributeValues[3] = if ($CsvRowItem.PSObject.Properties.Name -contains '日数入力') { $CsvRowItem.'日数入力' } else { "" }
     # No.5: 関連タスク種別
     $attributeValues[4] = if ($CsvRowItem.PSObject.Properties.Name -contains '関連種別') { $CsvRowItem.'関連種別' } else { "" }
-    # No.6: 関連タスクID (CSVからは直接取得せず、依存関係解決の結果から設定されることが多いが、ここではCSVからの直接マッピングを仮定)
-    # CSVに「先行タスクユーザー記述ID」のような列があればそれを使う。なければ空。
-    $attributeValues[5] = if ($CsvRowItem.PSObject.Properties.Name -contains '先行タスクユーザー記述ID') { $CsvRowItem.'先行タスクユーザー記述ID' } else { "" } # 仮の列名
+    # No.6: 関連タスクID (CSVの「関連番号」列に対応)
+    $attributeValues[5] = if ($CsvRowItem.PSObject.Properties.Name -contains '関連番号') { $CsvRowItem.'関連番号' } else { "" }
     # No.7: 開始日（実績）
     $attributeValues[6] = if ($CsvRowItem.PSObject.Properties.Name -contains '開始実績') { $CsvRowItem.'開始実績' } else { "" }
     # No.8: 終了日（実績）
-    $attributeValues[7] = if ($CsvRowItem.PSObject.Properties.Name -contains '修了実績') { $CsvRowItem.'修了実績' } else { "" } # CSVの列名に注意
+    $attributeValues[7] = if ($CsvRowItem.PSObject.Properties.Name -contains '修了実績') { $CsvRowItem.'修了実績' } else { "" }
     # No.9: 進捗率
-    $attributeValues[8] = if ($CsvRowItem.PSObject.Properties.Name -contains '進捗実績') { $CsvRowItem.'進捗実績' } else { "" } # CSVの列名に注意
+    $attributeValues[8] = if ($CsvRowItem.PSObject.Properties.Name -contains '進捗実績') { $CsvRowItem.'進捗実績' } else { "" }
     # No.10: 担当者
     $attributeValues[9] = if ($CsvRowItem.PSObject.Properties.Name -contains '担当者名') { $CsvRowItem.'担当者名' } else { "" }
     # No.11: 担当組織
@@ -231,7 +295,6 @@ function ConvertTo-SimpleMdWbsAttributeString {
     $attributeValues[11] = if ($CsvRowItem.PSObject.Properties.Name -contains '最終更新') { $CsvRowItem.'最終更新' } else { "" }
     # No.13: コメント
     $attributeValues[12] = if ($CsvRowItem.PSObject.Properties.Name -contains 'コメント') { $CsvRowItem.'コメント' } else { "" }
-
     # 配列をカンマで結合して返す
     $attributeString = $attributeValues -join ','
     Write-Verbose "ConvertTo-SimpleMdWbsAttributeString: Generated attribute string: '$attributeString'"
@@ -265,4 +328,15 @@ function Get-SimpleMdWbsHierarchyPrefix {
     return $prefix
 }
 
-Export-ModuleMember -Function Get-DecodedAndMappedAttribute, ConvertTo-AttributeObject, Reset-WbsCounters, ConvertTo-SimpleMdWbsAttributeString, Get-SimpleMdWbsHierarchyPrefix
+$functionsToExport = @(
+    'Get-DecodedAndMappedAttribute',
+    'ConvertTo-AttributeObject',
+    'Reset-WbsCounters',
+    'ConvertTo-SimpleMdWbsAttributeString',
+    'Get-SimpleMdWbsHierarchyPrefix',
+    'Reset-InternalWbsCounters',
+    'Update-InternalWbsCounters',
+    'Get-NextInternalSystemId',
+    'Get-NextInternalHierarchicalId'
+)
+Export-ModuleMember -Function $functionsToExport
