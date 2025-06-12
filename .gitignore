@@ -1,6 +1,8 @@
 *.log
+*.patch
+*.diff
+*.bak
 node_modules/
 .vscode/
-.
 tests/outputs/
 samples/excel_examples/simple-markdown-wbs-gantt-sample.csv
