@@ -1,19 +1,3 @@
-# テストケース1: 基本的な変換テスト
-.\src\powershell\Convert-SimpleMdWbsToCsv.ps1 -InputFilePath ".\samples\mdwbs_examples\sample_project_A.md" -OutputCsvPath ".\test_outputs\mdwbs_to_csv\sample_project_A_output.csv" -Verbose
-
-# テストケース2: 別のサンプルファイル (もしあれば)
-# .\src\powershell\Convert-SimpleMdWbsToCsv.ps1 -InputFilePath ".\samples\mdwbs_examples\another_sample.md" -OutputCsvPath ".\test_outputs\mdwbs_to_csv\another_sample_output.csv" -Verbose
-```*   `-Verbose` スイッチを付けることで、スクリプトの詳細な処理ログを確認できます。
-
----
-
-**ステップ3: テスト用簡易スクリプトの作成 (オプションだが推奨)**
-
-毎回コマンドを手で打つのは手間なので、複数のテストケースをまとめて実行したり、期待結果との比較を自動化したりするための簡単なテストランナースクリプトを作成すると便利です。これはPesterのような厳密なテストフレームワークである必要はありません。
-
-**テストランナースクリプト例 (`Run-ConversionTests.ps1` などとして `tests/powershell/` に配置):**
-
-```powershell
 <#
 .SYNOPSIS
     Runs integration tests for Convert-SimpleMdWbsToCsv.ps1.
