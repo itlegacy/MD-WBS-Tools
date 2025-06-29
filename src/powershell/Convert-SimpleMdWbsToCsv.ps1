@@ -86,9 +86,9 @@ process {
                 } else {
                     $attributeString = ''
                 }
-            } else {
+            } else { # It's not a heading or a task item.
                 if (-not [string]::IsNullOrWhiteSpace($line) -and $line -notmatch '^\s*<!--.*-->\s*$') {
-                    Write-Verbose "Skipping line (Not a recognized WBS item): $line"
+                    Write-Warning "Line $($i+1): Skipping line as it is not a recognized WBS item: '$line'"
                 }
                 continue
             }
@@ -96,6 +96,13 @@ process {
             $item = [WbsElementNode]::new()
             $item.HierarchyLevel = $itemLevel
             $item.ItemText = $itemText.Trim()
+
+            # Warn if the parsed item text is empty.
+            if ([string]::IsNullOrWhiteSpace($item.ItemText)) {
+                $itemTypeDescription = if ($isTask) { "task item" } else { "heading (H$($item.HierarchyLevel))" }
+                Write-Warning "Line $($i+1): Parsed a $itemTypeDescription with empty text: '$line'"
+            }
+
             $item.IsTask = $isTask
             $item.Attributes = New-Object string[] 13
             $rawSplitAttributes = $attributeString.Split(',', 13) | ForEach-Object { $_.Trim() }
@@ -125,6 +132,13 @@ process {
             # --- デバッグここまで ---
             #>
             $wbsItems.Add($item)
+        }
+
+        Write-Verbose "--- Phase 1.5: Validating Predecessor IDs ---"
+        foreach ($item in $wbsItems) {
+            if (-not [string]::IsNullOrEmpty($item.PredecessorUserDefinedId) -and -not $idMap.ContainsKey($item.PredecessorUserDefinedId)) {
+                Write-Warning "Predecessor ID '$($item.PredecessorUserDefinedId)' not found for item '$($item.ItemText)' (System ID: $($item.SystemId))."
+            }
         }
 
         Write-Verbose "--- Phase 2: Preparing for CSV export ---"
@@ -196,7 +210,10 @@ process {
         Write-Host "Successfully exported WBS data to: $OutputCsvPath" -ForegroundColor Green
     }
     catch {
-        Write-Error "An unhandled error occurred: $($_.Exception.Message)"
+        Write-Error "An error occurred during processing: $($_.Exception.Message)"
+        Write-Error "Script: $($_.InvocationInfo.ScriptName)"
+        Write-Error "Line: $($_.InvocationInfo.ScriptLineNumber)"
+        Write-Error "StackTrace: $($_.ScriptStackTrace)"
     }
 }
 

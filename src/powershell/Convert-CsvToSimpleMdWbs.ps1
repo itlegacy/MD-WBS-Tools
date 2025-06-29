@@ -65,11 +65,31 @@ process {
         $wbsItemsFromCsv = Import-Csv -Path $InputCsvPath -Encoding UTF8
         
         if ($null -eq $wbsItemsFromCsv -or $wbsItemsFromCsv.Count -eq 0) {
-            Write-Warning "CSV file is empty or contains no data rows."
-            return
-        }
+                Write-Warning "CSV file is empty or contains no data rows."
+                return
+            }
 
-        Write-Verbose "Generating Markdown content based on the 'visual' rule..."
+            # Check for required columns
+            $csvHeaders = $wbsItemsFromCsv[0].PSObject.Properties.Name
+            $requiredTextColumns = @('大分類', '中分類', '小分類', 'タスクアイテム')
+            $hasTextColumn = $false
+            foreach ($col in $requiredTextColumns) {
+                if ($csvHeaders -contains $col) {
+                    $hasTextColumn = $true
+                    break
+                }
+            }
+
+            if (-not ($csvHeaders -contains '番号')) {
+                Write-Error "Input CSV is missing the required column '番号'."
+                return
+            }
+            if (-not $hasTextColumn) {
+                 Write-Error "Input CSV must contain at least one of the following columns: '大分類', '中分類', '小分類', 'タスクアイテム'."
+                 return
+            }
+
+            Write-Verbose "Generating Markdown content based on the 'visual' rule..."
 
         $isFirstLine = $true
         foreach ($item in $wbsItemsFromCsv) {

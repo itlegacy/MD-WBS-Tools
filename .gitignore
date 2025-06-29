@@ -2,6 +2,7 @@
 *.patch
 *.diff
 *.bak
+*.workspace
 node_modules/
 .vscode/
 tests/outputs/
