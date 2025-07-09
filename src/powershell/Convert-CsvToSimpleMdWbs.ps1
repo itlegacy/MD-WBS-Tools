@@ -5,7 +5,7 @@
 .DESCRIPTION
     このスクリプトは、docs/92_logic_of_numbering.md の詳細設計書に厳密に従います。
 .NOTES
-    Version: 12.1.0 (Final attribute mapping fix)
+    Version: 12.2.0 (Fixed ParserError)
 #>
 [CmdletBinding()]
 param(
@@ -13,13 +13,32 @@ param(
     [string]$InputCsvPath,
 
     [Parameter(Mandatory=$false)]
-    [string]$OutputMdPath = (Join-Path $PSScriptRoot "..\..\test_outputs\output.md")
+    [string]$OutputMdPath
 )
 
 begin {
+    # Set UI Culture to English for consistent error messages
+    [System.Threading.Thread]::CurrentThread.CurrentUICulture = 'en-US'
+    
     Set-StrictMode -Version Latest
     $ErrorActionPreference = "Stop"
     Write-Verbose "Starting script: $($MyInvocation.MyCommand.Name)"
+
+    # Resolve output path if it's not absolute
+    if (-not $OutputMdPath) {
+        # Default path if not provided
+        if ($PSScriptRoot) {
+            $OutputMdPath = Join-Path $PSScriptRoot "..\..\test_outputs\output.md"
+        } else {
+            # Fallback for environments where $PSScriptRoot is not available
+            $OutputMdPath = Join-Path $PWD "test_outputs\output.md"
+        }
+    }
+    if (-not [System.IO.Path]::IsPathRooted($OutputMdPath)) {
+        $OutputMdPath = Join-Path $PWD $OutputMdPath
+    }
+    $OutputMdPath = [System.IO.Path]::GetFullPath($OutputMdPath)
+    Write-Verbose "Output path resolved to: $OutputMdPath"
 }
 
 process {
@@ -33,18 +52,21 @@ process {
         $bodyItems = $csvData | Select-Object -Skip 1
 
         if ($null -eq $headerItem) {
-            throw "プロジェクトタイトルとなるH1要素（CSVの1行目）が見つかりませんでした。"
+            throw "Project title (H1 element, the first row of the CSV) was not found."
         }
         
         # === ステップ2: WBSボディの項目で、WBS番号を付与 ===
         Write-Verbose "Step 2: Processing and numbering WBS body items..."
         $processedItems = [System.Collections.Generic.List[object]]::new()
         
-        $counters = @(1, 1, 1, 1) # H2, H3, H4, Task
-        
+        # H2, H3, H4, Task counters. Start H2 from 1.
+        $counters = @{ H2 = 1; H3 = 1; H4 = 1; Task = 1 }
+        $lastWbsNumber = @{ H2 = 0; H3 = 0; H4 = 0 }
+
         foreach ($row in $bodyItems) {
-            $currentLevel = ""
-            $itemText = ""
+            $currentLevel = $null
+            $itemText = $null
+
             if (-not [string]::IsNullOrEmpty($row.'大分類'))     { $currentLevel = "H2"; $itemText = $row.'大分類' }
             elseif (-not [string]::IsNullOrEmpty($row.'中分類')) { $currentLevel = "H3"; $itemText = $row.'中分類' }
             elseif (-not [string]::IsNullOrEmpty($row.'小分類')) { $currentLevel = "H4"; $itemText = $row.'小分類' }
@@ -53,10 +75,28 @@ process {
 
             $wbsNumber = ""
             switch ($currentLevel) {
-                "H2"   { $wbsNumber = "{0:D2}.00.00.000" -f $counters[0]; $counters[0]++; $counters[1]=1; $counters[2]=1; $counters[3]=1 }
-                "H3"   { $wbsNumber = "{0:D2}.{1:D2}.00.000" -f $counters[0], $counters[1]; $counters[1]++; $counters[2]=1; $counters[3]=1 }
-                "H4"   { $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.000" -f $counters[0], $counters[1], $counters[2]; $counters[2]++; $counters[3]=1 }
-                "Task" { $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.{3:D3}" -f $counters[0], $counters[1], $counters[2], $counters[3]; $counters[3]++ }
+                "H2" {
+                    $lastWbsNumber.H2 = $counters.H2
+                    $wbsNumber = "{0:D2}.00.00.000" -f $lastWbsNumber.H2
+                    $counters.H2++
+                    $counters.H3 = 1; $counters.H4 = 1; $counters.Task = 1
+                }
+                "H3" {
+                    $lastWbsNumber.H3 = $counters.H3
+                    $wbsNumber = "{0:D2}.{1:D2}.00.000" -f $lastWbsNumber.H2, $lastWbsNumber.H3
+                    $counters.H3++
+                    $counters.H4 = 1; $counters.Task = 1
+                }
+                "H4" {
+                    $lastWbsNumber.H4 = $counters.H4
+                    $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.000" -f $lastWbsNumber.H2, $lastWbsNumber.H3, $lastWbsNumber.H4
+                    $counters.H4++
+                    $counters.Task = 1
+                }
+                "Task" {
+                    $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.{3:D3}" -f $lastWbsNumber.H2, $lastWbsNumber.H3, $lastWbsNumber.H4, $counters.Task
+                    $counters.Task++
+                }
             }
 
             $processedItems.Add([PSCustomObject]@{ WbsNumber = $wbsNumber; Level = $currentLevel; ItemText = $itemText; CsvRow = $row })
@@ -65,7 +105,6 @@ process {
 
         # === ステップ3: WBS番号で全ての項目を並べ替え ===
         Write-Verbose "Step 3: Sorting all items by the generated WBS Number..."
-        # [画竜点睛] Sort-Objectに、階層的な数値を正しく解釈させるためのスクリプトブロックを渡す
         $sortedItems = $processedItems | Sort-Object @{Expression={ [System.Version]$_.WbsNumber }}
 
         # === ステップ4: ソート済みリストからMarkdownを生成 ===
@@ -78,17 +117,16 @@ process {
         $markdownOutputLines.Add("%% $h1AttributeString")
         
         foreach ($item in $sortedItems) {
-            # [画竜点睛] 属性の先頭には、生成・ソートした正しいWBS番号を使用する
             $attributeValues = @(
-                $item.WbsNumber, # <--- 諸悪の根源の修正
+                $item.CsvRow.'番号', # Use original '番号' for 'ユーザー記述ID'
                 $item.CsvRow.'開始入力', $item.CsvRow.'終了入力', $item.CsvRow.'日数入力', $item.CsvRow.'関連種別',
                 $item.CsvRow.'関連番号', $item.CsvRow.'開始実績', $item.CsvRow.'修了実績', $item.CsvRow.'進捗実績', $item.CsvRow.'担当者名',
                 $item.CsvRow.'担当組織', $item.CsvRow.'最終更新', $item.CsvRow.'コメント'
             )
             $attributeString = $attributeValues -join ','
-            $isAttributeEmpty = (($attributeValues | Select-Object -Skip 1 | ForEach-Object { $_.Trim() }) -join '' -eq '')
+            $isAttributeEmpty = (-not ($attributeValues -join '').Trim())
 
-            $markdownOutputLines.Add("")
+            $markdownOutputLines.Add("") # Blank line before each item
             switch ($item.Level) {
                 "H2"   { $markdownOutputLines.Add("## $($item.ItemText)") }
                 "H3"   { $markdownOutputLines.Add("### $($item.ItemText)") }
@@ -96,23 +134,30 @@ process {
                 "Task" { $markdownOutputLines.Add("- $($item.ItemText)") }
             }
             if (-not $isAttributeEmpty) {
-                if ($item.Level -eq "Task") { $markdownOutputLines[-1] += " <!-- $attributeString -->" }
+                if ($item.Level -eq "Task") { 
+                    $markdownOutputLines[-1] += " <!-- $attributeString -->" 
+                }
                 else { 
-                    $markdownOutputLines.Add("")
                     $markdownOutputLines.Add("%% $attributeString")
                 }
             }
         }
     }
-    catch { Write-Error "An error occurred: $($_.Exception.Message)" }
+    catch {
+        $PSCmdlet.ThrowTerminatingError($_)
+    }
 }
 
 end {
     Write-Verbose "Finalizing script and writing to file..."
     if ($markdownOutputLines.Count -gt 0) {
         $outputDirectory = Split-Path -Path $OutputMdPath -Parent
-        if (-not (Test-Path $outputDirectory)) { New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null }
-        Set-Content -Path $OutputMdPath -Value $markdownOutputLines -Encoding UTF8BOM -Force
+        if (-not (Test-Path $outputDirectory)) { 
+            New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null 
+        }
+        # Add a newline at the end of the file
+        $fileContent = ($markdownOutputLines | Out-String) + [Environment]::NewLine
+        Set-Content -Path $OutputMdPath -Value $fileContent -Encoding UTF8BOM -Force
         Write-Host "Successfully generated markdown file: $OutputMdPath" -ForegroundColor Green
     }
 }
