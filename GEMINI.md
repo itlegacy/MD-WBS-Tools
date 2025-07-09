@@ -40,4 +40,12 @@ APIの無料枠には「1分あたり60リクエスト」「1日あたり1,000�
 * 新しいスクリプトや機能の提案時には、セキュリティとパフォーマンスに配慮した簡潔なコードを優先すること。
 * WBS（Work Breakdown Structure）に関する質問やタスクには、PMBOKガイドラインなどの一般的なプロジェクト管理の知識を適用すること。
 
+プロジェクト固有の主要ルールブック：
+*   [AI協業ガイドライン](docs/05_AICollaboration/ai_collaboration_guideline.md)
+*   [PowerShell コーディングスタンダード](docs/03_DevelopmentGuides/powershell_coding_standards.md)
+
 ---
+
+## 4. 解決困難時の対応
+
+自身でタスクの解決が困難な場合、またはツールが応答しないなど進行がブロックされた場合は、タスクの継続のために利用者や他のAIツール（Cursor, VS Codeの生成AIなど）に協力を求める。

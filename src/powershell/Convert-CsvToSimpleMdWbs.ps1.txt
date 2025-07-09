@@ -5,7 +5,7 @@
 .DESCRIPTION
     このスクリプトは、docs/92_logic_of_numbering.md の詳細設計書に厳密に従います。
 .NOTES
-    Version: 12.1.0 (Final attribute mapping fix)
+    Version: 10.0.0 (Implementation of 92_logic_of_numbering.md)
 #>
 [CmdletBinding()]
 param(
@@ -31,16 +31,13 @@ process {
 
         $headerItem = $csvData | Select-Object -First 1
         $bodyItems = $csvData | Select-Object -Skip 1
-
-        if ($null -eq $headerItem) {
-            throw "プロジェクトタイトルとなるH1要素（CSVの1行目）が見つかりませんでした。"
-        }
         
-        # === ステップ2: WBSボディの項目で、WBS番号を付与 ===
-        Write-Verbose "Step 2: Processing and numbering WBS body items..."
+        # === ステップ2: H1以外の項目で、WBS番号を付与 ===
+        Write-Verbose "Step 2: Processing and numbering all non-H1 items..."
         $processedItems = [System.Collections.Generic.List[object]]::new()
         
-        $counters = @(1, 1, 1, 1) # H2, H3, H4, Task
+        # H2, H3, H4, Taskに対応する4つのカウンター（初期値は1）
+        $counters = @(1, 1, 1, 1)
         
         foreach ($row in $bodyItems) {
             $currentLevel = ""
@@ -51,43 +48,60 @@ process {
             elseif (-not [string]::IsNullOrEmpty($row.'タスクアイテム'))   { $currentLevel = "Task"; $itemText = $row.'タスクアイテム' }
             else { continue }
 
+            # Use-Then-Increment アルゴリズム
             $wbsNumber = ""
             switch ($currentLevel) {
-                "H2"   { $wbsNumber = "{0:D2}.00.00.000" -f $counters[0]; $counters[0]++; $counters[1]=1; $counters[2]=1; $counters[3]=1 }
-                "H3"   { $wbsNumber = "{0:D2}.{1:D2}.00.000" -f $counters[0], $counters[1]; $counters[1]++; $counters[2]=1; $counters[3]=1 }
-                "H4"   { $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.000" -f $counters[0], $counters[1], $counters[2]; $counters[2]++; $counters[3]=1 }
-                "Task" { $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.{3:D3}" -f $counters[0], $counters[1], $counters[2], $counters[3]; $counters[3]++ }
+                "H2" {
+                    $wbsNumber = "{0:D2}.00.00.000" -f $counters[0]
+                    $counters[0]++; $counters[1]=1; $counters[2]=1; $counters[3]=1
+                }
+                "H3" {
+                    $wbsNumber = "{0:D2}.{1:D2}.00.000" -f $counters[0], $counters[1]
+                    $counters[1]++; $counters[2]=1; $counters[3]=1
+                }
+                "H4" {
+                    $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.000" -f $counters[0], $counters[1], $counters[2]
+                    $counters[2]++; $counters[3]=1
+                }
+                "Task" {
+                    $wbsNumber = "{0:D2}.{1:D2}.{2:D2}.{3:D3}" -f $counters[0], $counters[1], $counters[2], $counters[3]
+                    $counters[3]++
+                }
             }
 
-            $processedItems.Add([PSCustomObject]@{ WbsNumber = $wbsNumber; Level = $currentLevel; ItemText = $itemText; CsvRow = $row })
+            $processedItems.Add([PSCustomObject]@{
+                WbsNumber = $wbsNumber; Level = $currentLevel; ItemText = $itemText; CsvRow = $row
+            })
             Write-Verbose "Assigned [$wbsNumber] to '$itemText'"
         }
 
         # === ステップ3: WBS番号で全ての項目を並べ替え ===
         Write-Verbose "Step 3: Sorting all items by the generated WBS Number..."
-        # [画竜点睛] Sort-Objectに、階層的な数値を正しく解釈させるためのスクリプトブロックを渡す
-        $sortedItems = $processedItems | Sort-Object @{Expression={ [System.Version]$_.WbsNumber }}
+        $sortedItems = $processedItems | Sort-Object WbsNumber
 
         # === ステップ4: ソート済みリストからMarkdownを生成 ===
         Write-Verbose "Step 4: Generating final Markdown from sorted list..."
         $markdownOutputLines = [System.Collections.Generic.List[string]]::new()
 
+        # まずH1を出力
         $h1Title = $headerItem.'大分類'
-        $h1AttributeString = "H1_Info,$($headerItem.'中分類'),$($headerItem.'小分類'),,,,$($headerItem.'タスクアイテム'),,,,,,"
+        $h1StartDate = $headerItem.'中分類'
+        $h1BaseDate = $headerItem.'小分類'
+        $h1SourceFile = $headerItem.'タスクアイテム'
+        $h1AttributeString = "H1_Info, $h1StartDate, $h1BaseDate, , , , , , , , , $h1SourceFile, "
         $markdownOutputLines.Add("# $h1Title")
         $markdownOutputLines.Add("%% $h1AttributeString")
         
+        # H1以外の項目を順に出力
         foreach ($item in $sortedItems) {
-            # [画竜点睛] 属性の先頭には、生成・ソートした正しいWBS番号を使用する
             $attributeValues = @(
-                $item.WbsNumber, # <--- 諸悪の根源の修正
-                $item.CsvRow.'開始入力', $item.CsvRow.'終了入力', $item.CsvRow.'日数入力', $item.CsvRow.'関連種別',
+                $item.CsvRow.'番号', $item.CsvRow.'開始入力', $item.CsvRow.'終了入力', $item.CsvRow.'日数入力', $item.CsvRow.'関連種別',
                 $item.CsvRow.'関連番号', $item.CsvRow.'開始実績', $item.CsvRow.'修了実績', $item.CsvRow.'進捗実績', $item.CsvRow.'担当者名',
                 $item.CsvRow.'担当組織', $item.CsvRow.'最終更新', $item.CsvRow.'コメント'
             )
             $attributeString = $attributeValues -join ','
-            $isAttributeEmpty = (($attributeValues | Select-Object -Skip 1 | ForEach-Object { $_.Trim() }) -join '' -eq '')
-
+            $isAttributeEmpty = ($attributeValues | ForEach-Object { $_.Trim() }) -join '' -eq ''
+            
             $markdownOutputLines.Add("")
             switch ($item.Level) {
                 "H2"   { $markdownOutputLines.Add("## $($item.ItemText)") }
@@ -97,10 +111,7 @@ process {
             }
             if (-not $isAttributeEmpty) {
                 if ($item.Level -eq "Task") { $markdownOutputLines[-1] += " <!-- $attributeString -->" }
-                else { 
-                    $markdownOutputLines.Add("")
-                    $markdownOutputLines.Add("%% $attributeString")
-                }
+                else { $markdownOutputLines.Add("%% $attributeString") }
             }
         }
     }
