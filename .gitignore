@@ -2,8 +2,9 @@
 *.patch
 *.diff
 *.bak
-*.workspace
-node_modules/
+*.code-workspace
+.gemini_session_state.json
 .vscode/
+node_modules/
 tests/outputs/
 samples/excel_examples/simple-markdown-wbs-gantt-sample.csv
